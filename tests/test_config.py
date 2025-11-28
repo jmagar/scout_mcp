@@ -1,8 +1,8 @@
 """Tests for configuration module."""
 
-import pytest
 from pathlib import Path
-from mcp_cat.config import Config, SSHHost
+
+from mcp_cat.config import Config
 
 
 def test_parse_ssh_config_extracts_hosts(tmp_path: Path) -> None:
@@ -85,3 +85,92 @@ def test_get_host_returns_none_for_unknown() -> None:
     """get_host returns None for unknown host."""
     config = Config()
     assert config.get_host("nonexistent") is None
+
+
+def test_empty_ssh_config(tmp_path: Path) -> None:
+    """Empty SSH config file returns no hosts."""
+    ssh_config = tmp_path / "config"
+    ssh_config.write_text("")
+
+    config = Config(ssh_config_path=ssh_config)
+    hosts = config.get_hosts()
+
+    assert len(hosts) == 0
+
+
+def test_ssh_config_with_comments_only(tmp_path: Path) -> None:
+    """SSH config with only comments returns no hosts."""
+    ssh_config = tmp_path / "config"
+    ssh_config.write_text("""
+# This is a comment
+# Another comment
+
+# Yet another comment
+""")
+
+    config = Config(ssh_config_path=ssh_config)
+    hosts = config.get_hosts()
+
+    assert len(hosts) == 0
+
+
+def test_host_without_hostname_is_skipped(tmp_path: Path) -> None:
+    """Host without HostName directive is skipped."""
+    ssh_config = tmp_path / "config"
+    ssh_config.write_text("""
+Host incomplete
+    User jmagar
+    Port 22
+
+Host complete
+    HostName 192.168.1.1
+    User admin
+""")
+
+    config = Config(ssh_config_path=ssh_config)
+    hosts = config.get_hosts()
+
+    assert len(hosts) == 1
+    assert "incomplete" not in hosts
+    assert "complete" in hosts
+    assert hosts["complete"].hostname == "192.168.1.1"
+
+
+def test_invalid_port_defaults_to_22(tmp_path: Path) -> None:
+    """Invalid port number defaults to 22."""
+    ssh_config = tmp_path / "config"
+    ssh_config.write_text("""
+Host badport
+    HostName 192.168.1.1
+    User admin
+    Port invalid
+
+Host stringport
+    HostName 192.168.1.2
+    User admin
+    Port abc123
+""")
+
+    config = Config(ssh_config_path=ssh_config)
+    hosts = config.get_hosts()
+
+    assert len(hosts) == 2
+    assert hosts["badport"].port == 22
+    assert hosts["stringport"].port == 22
+
+
+def test_unreadable_config_file_treated_as_empty(tmp_path: Path) -> None:
+    """Unreadable config file is treated as empty."""
+    ssh_config = tmp_path / "config"
+    ssh_config.write_text("Host test\n    HostName 192.168.1.1")
+    # Make file unreadable
+    ssh_config.chmod(0o000)
+
+    try:
+        config = Config(ssh_config_path=ssh_config)
+        hosts = config.get_hosts()
+        # Should return empty dict for unreadable file
+        assert len(hosts) == 0
+    finally:
+        # Restore permissions for cleanup
+        ssh_config.chmod(0o644)

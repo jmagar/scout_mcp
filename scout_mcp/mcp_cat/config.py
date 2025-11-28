@@ -1,9 +1,9 @@
 """Configuration management for MCP-Cat."""
 
+import re
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
-import re
 
 
 @dataclass
@@ -21,7 +21,9 @@ class SSHHost:
 class Config:
     """MCP-Cat configuration."""
 
-    ssh_config_path: Path = field(default_factory=lambda: Path.home() / ".ssh" / "config")
+    ssh_config_path: Path = field(
+        default_factory=lambda: Path.home() / ".ssh" / "config"
+    )
     allowlist: list[str] = field(default_factory=list)
     blocklist: list[str] = field(default_factory=list)
     max_file_size: int = 1_048_576  # 1MB
@@ -40,7 +42,13 @@ class Config:
             self._parsed = True
             return
 
-        content = self.ssh_config_path.read_text()
+        try:
+            content = self.ssh_config_path.read_text()
+        except (OSError, PermissionError):
+            # Treat unreadable config as empty
+            self._parsed = True
+            return
+
         current_host: str | None = None
         current_data: dict[str, str] = {}
 
@@ -54,11 +62,15 @@ class Config:
             if host_match:
                 # Save previous host if exists
                 if current_host and current_data.get("hostname"):
+                    try:
+                        port = int(current_data.get("port", "22"))
+                    except ValueError:
+                        port = 22
                     self._hosts[current_host] = SSHHost(
                         name=current_host,
                         hostname=current_data.get("hostname", ""),
                         user=current_data.get("user", "root"),
-                        port=int(current_data.get("port", "22")),
+                        port=port,
                         identity_file=current_data.get("identityfile"),
                     )
                 current_host = host_match.group(1)
@@ -74,11 +86,15 @@ class Config:
 
         # Save last host
         if current_host and current_data.get("hostname"):
+            try:
+                port = int(current_data.get("port", "22"))
+            except ValueError:
+                port = 22
             self._hosts[current_host] = SSHHost(
                 name=current_host,
                 hostname=current_data.get("hostname", ""),
                 user=current_data.get("user", "root"),
-                port=int(current_data.get("port", "22")),
+                port=port,
                 identity_file=current_data.get("identityfile"),
             )
 
