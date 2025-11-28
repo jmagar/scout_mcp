@@ -14,7 +14,7 @@
 
 **Files:**
 - Create: `pyproject.toml`
-- Create: `src/mcp_cat/__init__.py`
+- Create: `scout_mcp/mcp_cat/__init__.py`
 - Create: `README.md`
 
 **Step 1: Initialize project with uv**
@@ -69,7 +69,7 @@ testpaths = ["tests"]
 **Step 3: Create package init**
 
 ```python
-# src/mcp_cat/__init__.py
+# scout_mcp/mcp_cat/__init__.py
 """MCP-Cat: Remote file operations via SSH."""
 
 __version__ = "0.1.0"
@@ -121,7 +121,7 @@ git commit -m "feat: initial project scaffolding"
 ## Task 2: Configuration Module
 
 **Files:**
-- Create: `src/mcp_cat/config.py`
+- Create: `scout_mcp/mcp_cat/config.py`
 - Create: `tests/test_config.py`
 
 **Step 1: Write failing test for SSH config parsing**
@@ -228,7 +228,7 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'mcp_cat.config'"
 **Step 3: Write config implementation**
 
 ```python
-# src/mcp_cat/config.py
+# scout_mcp/mcp_cat/config.py
 """Configuration management for MCP-Cat."""
 
 from dataclasses import dataclass, field
@@ -353,7 +353,7 @@ Expected: All 4 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add src/mcp_cat/config.py tests/test_config.py
+git add scout_mcp/mcp_cat/config.py tests/test_config.py
 git commit -m "feat: add config module with SSH config parsing"
 ```
 
@@ -362,7 +362,7 @@ git commit -m "feat: add config module with SSH config parsing"
 ## Task 3: Connection Pool Module
 
 **Files:**
-- Create: `src/mcp_cat/pool.py`
+- Create: `scout_mcp/mcp_cat/pool.py`
 - Create: `tests/test_pool.py`
 
 **Step 1: Write failing test for connection pool**
@@ -480,7 +480,7 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'mcp_cat.pool'"
 **Step 3: Write pool implementation**
 
 ```python
-# src/mcp_cat/pool.py
+# scout_mcp/mcp_cat/pool.py
 """SSH connection pooling with lazy disconnect."""
 
 import asyncio
@@ -593,7 +593,7 @@ Expected: All 4 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add src/mcp_cat/pool.py tests/test_pool.py
+git add scout_mcp/mcp_cat/pool.py tests/test_pool.py
 git commit -m "feat: add SSH connection pool with idle timeout"
 ```
 
@@ -602,7 +602,7 @@ git commit -m "feat: add SSH connection pool with idle timeout"
 ## Task 4: Executors Module
 
 **Files:**
-- Create: `src/mcp_cat/executors.py`
+- Create: `scout_mcp/mcp_cat/executors.py`
 - Create: `tests/test_executors.py`
 
 **Step 1: Write failing tests for executors**
@@ -757,7 +757,7 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'mcp_cat.executors'"
 **Step 3: Write executors implementation**
 
 ```python
-# src/mcp_cat/executors.py
+# scout_mcp/mcp_cat/executors.py
 """SSH command executors for file operations."""
 
 from dataclasses import dataclass
@@ -877,7 +877,7 @@ Expected: All 8 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add src/mcp_cat/executors.py tests/test_executors.py
+git add scout_mcp/mcp_cat/executors.py tests/test_executors.py
 git commit -m "feat: add executors for cat, ls, and command execution"
 ```
 
@@ -886,7 +886,7 @@ git commit -m "feat: add executors for cat, ls, and command execution"
 ## Task 5: Scout Module (URI Parsing & Intent Detection)
 
 **Files:**
-- Create: `src/mcp_cat/scout.py`
+- Create: `scout_mcp/mcp_cat/scout.py`
 - Create: `tests/test_scout.py`
 
 **Step 1: Write failing tests for scout**
@@ -961,7 +961,7 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'mcp_cat.scout'"
 **Step 3: Write scout implementation**
 
 ```python
-# src/mcp_cat/scout.py
+# scout_mcp/mcp_cat/scout.py
 """Scout tool URI parsing and intent detection."""
 
 from dataclasses import dataclass
@@ -1026,7 +1026,7 @@ Expected: All 7 tests PASS
 **Step 5: Commit**
 
 ```bash
-git add src/mcp_cat/scout.py tests/test_scout.py
+git add scout_mcp/mcp_cat/scout.py tests/test_scout.py
 git commit -m "feat: add scout URI parsing and target detection"
 ```
 
@@ -1035,13 +1035,13 @@ git commit -m "feat: add scout URI parsing and target detection"
 ## Task 6: FastMCP Server
 
 **Files:**
-- Create: `src/mcp_cat/server.py`
-- Create: `src/mcp_cat/__main__.py`
+- Create: `scout_mcp/mcp_cat/server.py`
+- Create: `scout_mcp/mcp_cat/__main__.py`
 
 **Step 1: Write the server implementation**
 
 ```python
-# src/mcp_cat/server.py
+# scout_mcp/mcp_cat/server.py
 """MCP-Cat FastMCP server."""
 
 from fastmcp import FastMCP
@@ -1172,7 +1172,7 @@ async def scout(target: str, query: str | None = None) -> str:
 **Step 2: Write the main entry point**
 
 ```python
-# src/mcp_cat/__main__.py
+# scout_mcp/mcp_cat/__main__.py
 """Entry point for mcp-cat server."""
 
 from mcp_cat.server import mcp
@@ -1192,7 +1192,7 @@ Expected: FastMCP help output
 **Step 4: Commit**
 
 ```bash
-git add src/mcp_cat/server.py src/mcp_cat/__main__.py
+git add scout_mcp/mcp_cat/server.py scout_mcp/mcp_cat/__main__.py
 git commit -m "feat: add FastMCP server with scout tool"
 ```
 
