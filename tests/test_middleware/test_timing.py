@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scout_mcp.middleware.timing import TimingMiddleware
+from scout_mcp.middleware.timing import DetailedTimingMiddleware, TimingMiddleware
 
 
 @pytest.fixture
@@ -83,3 +83,67 @@ async def test_timing_middleware_logs_slow_requests(
 
     # Should log warning for slow request
     mock_logger.warning.assert_called_once()
+
+
+@pytest.fixture
+def detailed_timing_middleware() -> DetailedTimingMiddleware:
+    """Create a detailed timing middleware instance."""
+    return DetailedTimingMiddleware()
+
+
+@pytest.mark.asyncio
+async def test_detailed_timing_tracks_tool_calls() -> None:
+    """DetailedTimingMiddleware tracks tool execution times."""
+    mock_logger = MagicMock()
+    middleware = DetailedTimingMiddleware(logger=mock_logger)
+    context = MagicMock()
+    context.method = "tools/call"
+    context.message = MagicMock()
+    context.message.name = "scout"
+
+    call_next = AsyncMock(return_value="result")
+
+    await middleware.on_call_tool(context, call_next)
+
+    mock_logger.info.assert_called()
+    log_call = str(mock_logger.info.call_args)
+    assert "scout" in log_call
+
+
+@pytest.mark.asyncio
+async def test_detailed_timing_tracks_resource_reads() -> None:
+    """DetailedTimingMiddleware tracks resource read times."""
+    mock_logger = MagicMock()
+    middleware = DetailedTimingMiddleware(logger=mock_logger)
+    context = MagicMock()
+    context.method = "resources/read"
+    context.message = MagicMock()
+    context.message.uri = "scout://tootie/etc/hosts"
+
+    call_next = AsyncMock(return_value="result")
+
+    await middleware.on_read_resource(context, call_next)
+
+    mock_logger.info.assert_called()
+    log_call = str(mock_logger.info.call_args)
+    assert "scout://tootie" in log_call
+
+
+@pytest.mark.asyncio
+async def test_detailed_timing_provides_stats() -> None:
+    """DetailedTimingMiddleware provides timing statistics."""
+    middleware = DetailedTimingMiddleware()
+    context = MagicMock()
+    context.method = "tools/call"
+    context.message = MagicMock()
+    context.message.name = "scout"
+
+    call_next = AsyncMock(return_value="result")
+
+    await middleware.on_call_tool(context, call_next)
+
+    stats = middleware.get_timing_stats()
+    assert "tool:scout" in stats
+    assert stats["tool:scout"]["count"] == 1
+    assert "total_ms" in stats["tool:scout"]
+    assert "avg_ms" in stats["tool:scout"]
