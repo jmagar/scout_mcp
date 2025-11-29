@@ -49,4 +49,4 @@ async def check_hosts_online(
     ]
 
     results = await asyncio.gather(*coros)
-    return dict(zip(names, results))
+    return dict(zip(names, results, strict=True))

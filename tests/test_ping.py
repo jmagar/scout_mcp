@@ -89,6 +89,8 @@ async def test_check_hosts_online_runs_concurrently() -> None:
         elapsed = time.perf_counter() - start
 
         # Should complete in ~0.1s if concurrent, not 0.3s+ if sequential
-        assert elapsed < delay_per_host * 2, f"Expected concurrent execution (<0.2s), got {elapsed:.2f}s"
+        assert elapsed < delay_per_host * 2, (
+            f"Expected concurrent execution (<0.2s), got {elapsed:.2f}s"
+        )
         assert len(results) == 3
         assert all(results.values())

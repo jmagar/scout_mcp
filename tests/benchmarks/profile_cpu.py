@@ -6,8 +6,9 @@ import pstats
 from io import StringIO
 from pathlib import Path
 
-from scout_mcp.models import SSHHost
 from scout_mcp.pool import ConnectionPool
+
+from scout_mcp.models import SSHHost
 
 
 class MockSSHConnection:

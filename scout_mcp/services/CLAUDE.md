@@ -75,9 +75,23 @@ except Exception:
     conn = await pool.get_connection(ssh_host)   # Retry once
 ```
 
+## Testing Utilities
+
+```python
+from scout_mcp.services import reset_state, set_config, set_pool
+
+# In test fixtures:
+reset_state()  # Clear all singletons
+
+# For custom config in tests:
+set_config(my_test_config)
+set_pool(my_test_pool)
+```
+
 ## Import
 
 ```python
 from scout_mcp.services import get_config, get_pool, ConnectionPool
+from scout_mcp.services import reset_state, set_config, set_pool  # Testing
 from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_path, tree_dir
 ```
