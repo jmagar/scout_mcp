@@ -5,8 +5,17 @@ MCP server for remote file operations via SSH. Enables Claude to read files, lis
 ## Quick Reference
 
 ```bash
-# Run server
+# Run server (HTTP on localhost:8000)
 uv run python -m scout_mcp
+
+# Run server on custom port
+SCOUT_HTTP_PORT=9000 uv run python -m scout_mcp
+
+# Run server on all interfaces
+SCOUT_HTTP_HOST=0.0.0.0 uv run python -m scout_mcp
+
+# Run with STDIO transport (for Claude Desktop)
+SCOUT_TRANSPORT=stdio uv run python -m scout_mcp
 
 # Run tests
 uv run pytest tests/ -v
@@ -63,6 +72,9 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 ### Environment Variables
 | Variable | Default | Purpose |
 |----------|---------|---------|
+| `SCOUT_TRANSPORT` | http | Transport protocol: "http" or "stdio" |
+| `SCOUT_HTTP_HOST` | 127.0.0.1 | HTTP server bind address |
+| `SCOUT_HTTP_PORT` | 8000 | HTTP server port |
 | `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
 | `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
 | `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
@@ -72,17 +84,36 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 
 Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
 
-### MCP Client Configuration
+### MCP Client Configuration (HTTP - Default)
+```json
+{
+  "mcpServers": {
+    "scout_mcp": {
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+### MCP Client Configuration (STDIO - Legacy)
 ```json
 {
   "mcpServers": {
     "scout_mcp": {
       "command": "uv",
-      "args": ["run", "--directory", "/code/scout_mcp", "python", "-m", "scout_mcp"]
+      "args": ["run", "--directory", "/code/scout_mcp", "python", "-m", "scout_mcp"],
+      "env": {
+        "SCOUT_TRANSPORT": "stdio"
+      }
     }
   }
 }
 ```
+
+### Health Check Endpoint
+When running with HTTP transport, a health check endpoint is available:
+- **URL:** `GET /health`
+- **Response:** `200 OK` with body `"OK"`
 
 ## Development
 
@@ -148,6 +179,8 @@ from scout_mcp.resources import scout_resource, list_hosts_resource
 
 ## Recent Changes
 
+- **Streamable HTTP transport by default** (was STDIO)
+- Health check endpoint at `/health`
+- Transport configuration via environment variables
 - Middleware stack: ErrorHandling → Timing → Logging
 - Module reorganization: flat → models/services/utils/tools/resources
-- Thin server.py (21 lines, wiring only)
