@@ -1,8 +1,7 @@
 {
   "mcpServers": {
     "scout": {
-      "command": "uv",
-      "args": ["run", "--directory", "/code/scout_mcp", "python", "-m", "scout_mcp"]
+      "url": "http://127.0.0.1:8000/mcp"
     }
   }
 }

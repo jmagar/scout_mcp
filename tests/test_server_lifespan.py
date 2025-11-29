@@ -189,14 +189,15 @@ async def test_dynamic_resource_integration(mock_ssh_config: Path) -> None:
             ]
             assert any("tootie://" in t for t in templates)
 
-            # Verify the template has correct metadata
+            # Verify the filesystem template has correct metadata
             tootie_template = None
             for template in mcp._resource_manager._templates.values():
-                if "tootie://" in template.uri_template:
+                uri = template.uri_template
+                if "tootie://" in uri and "path" in uri:
                     tootie_template = template
                     break
 
-            assert tootie_template is not None, "tootie:// template not found"
+            assert tootie_template is not None, "tootie://{{path*}} template not found"
             assert tootie_template.name == "tootie filesystem"
             assert "tootie" in tootie_template.description
 
@@ -204,3 +205,157 @@ async def test_dynamic_resource_integration(mock_ssh_config: Path) -> None:
             result = await _read_host_path("tootie", "etc/hosts")
             assert "test file contents" in result
             assert mock_pool.get_connection.called
+
+
+@pytest.mark.asyncio
+async def test_lifespan_registers_docker_templates(mock_ssh_config: Path) -> None:
+    """Lifespan registers Docker resource templates for each host."""
+    from scout_mcp.server import app_lifespan, create_server
+
+    config = Config(ssh_config_path=mock_ssh_config)
+
+    with patch("scout_mcp.server.get_config", return_value=config):
+        mcp = create_server()
+
+        async with app_lifespan(mcp):
+            templates = [
+                t.uri_template
+                for t in mcp._resource_manager._templates.values()
+            ]
+
+            # Non-template resources (no placeholders)
+            resources = [
+                str(r.uri)
+                for r in mcp._resource_manager._resources.values()
+            ]
+
+            # Should have docker logs templates
+            assert any("tootie://docker/" in t and "/logs" in t for t in templates), (
+                f"Expected tootie://docker/*/logs template in {templates}"
+            )
+            assert any("squirts://docker/" in t and "/logs" in t for t in templates), (
+                f"Expected squirts://docker/*/logs template in {templates}"
+            )
+
+            # Should have docker list resources (no template params)
+            assert any("tootie://docker" in r for r in resources), (
+                f"Expected tootie://docker resource in {resources}"
+            )
+
+            # Should still have filesystem templates
+            assert any("tootie://" in t and "docker" not in t for t in templates), (
+                f"Expected tootie://path template in {templates}"
+            )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_registers_compose_templates(mock_ssh_config: Path) -> None:
+    """Lifespan registers Compose resource templates for each host."""
+    from scout_mcp.server import app_lifespan, create_server
+
+    config = Config(ssh_config_path=mock_ssh_config)
+
+    with patch("scout_mcp.server.get_config", return_value=config):
+        mcp = create_server()
+
+        async with app_lifespan(mcp):
+            templates = [
+                t.uri_template
+                for t in mcp._resource_manager._templates.values()
+            ]
+
+            resources = [
+                str(r.uri)
+                for r in mcp._resource_manager._resources.values()
+            ]
+
+            # Should have compose file templates
+            has_compose_project = any(
+                "tootie://compose/" in t and "project" in t for t in templates
+            )
+            assert has_compose_project, (
+                f"Expected tootie://compose/{{project}} template in {templates}"
+            )
+
+            # Should have compose logs templates
+            has_compose_logs = any(
+                "tootie://compose/" in t and "/logs" in t for t in templates
+            )
+            assert has_compose_logs, (
+                f"Expected tootie://compose/{{project}}/logs template in {templates}"
+            )
+
+            # Should have compose list resources
+            has_compose_list = any(
+                "tootie://compose" in r and "project" not in r for r in resources
+            )
+            assert has_compose_list, (
+                f"Expected tootie://compose resource in {resources}"
+            )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_registers_zfs_templates(mock_ssh_config: Path) -> None:
+    """Lifespan registers ZFS resource templates for each host."""
+    from scout_mcp.server import app_lifespan, create_server
+
+    config = Config(ssh_config_path=mock_ssh_config)
+
+    with patch("scout_mcp.server.get_config", return_value=config):
+        mcp = create_server()
+
+        async with app_lifespan(mcp):
+            templates = [
+                t.uri_template
+                for t in mcp._resource_manager._templates.values()
+            ]
+
+            resources = [
+                str(r.uri)
+                for r in mcp._resource_manager._resources.values()
+            ]
+
+            # Should have zfs pool templates
+            assert any("tootie://zfs/" in t and "pool" in t for t in templates), (
+                f"Expected tootie://zfs/{{pool}} template in {templates}"
+            )
+
+            # Should have zfs datasets templates
+            assert any("tootie://zfs/" in t and "/datasets" in t for t in templates), (
+                f"Expected tootie://zfs/{{pool}}/datasets template in {templates}"
+            )
+
+            # Should have zfs overview resources
+            assert any("tootie://zfs" in r and "pool" not in r for r in resources), (
+                f"Expected tootie://zfs resource in {resources}"
+            )
+
+            # Should have zfs snapshots resources
+            assert any("tootie://zfs/snapshots" in r for r in resources), (
+                f"Expected tootie://zfs/snapshots resource in {resources}"
+            )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_registers_syslog_resources(mock_ssh_config: Path) -> None:
+    """Lifespan registers syslog resources for each host."""
+    from scout_mcp.server import app_lifespan, create_server
+
+    config = Config(ssh_config_path=mock_ssh_config)
+
+    with patch("scout_mcp.server.get_config", return_value=config):
+        mcp = create_server()
+
+        async with app_lifespan(mcp):
+            resources = [
+                str(r.uri)
+                for r in mcp._resource_manager._resources.values()
+            ]
+
+            # Should have syslog resources
+            assert any("tootie://syslog" in r for r in resources), (
+                f"Expected tootie://syslog resource in {resources}"
+            )
+            assert any("squirts://syslog" in r for r in resources), (
+                f"Expected squirts://syslog resource in {resources}"
+            )

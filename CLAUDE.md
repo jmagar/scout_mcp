@@ -5,14 +5,14 @@ MCP server for remote file operations via SSH. Enables Claude to read files, lis
 ## Quick Reference
 
 ```bash
-# Run server (HTTP on localhost:8000)
+# Run server (HTTP on 0.0.0.0:8000)
 uv run python -m scout_mcp
 
 # Run server on custom port
 SCOUT_HTTP_PORT=9000 uv run python -m scout_mcp
 
-# Run server on all interfaces
-SCOUT_HTTP_HOST=0.0.0.0 uv run python -m scout_mcp
+# Run server on localhost only
+SCOUT_HTTP_HOST=127.0.0.1 uv run python -m scout_mcp
 
 # Run with STDIO transport (for Claude Desktop)
 SCOUT_TRANSPORT=stdio uv run python -m scout_mcp
@@ -73,7 +73,7 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SCOUT_TRANSPORT` | http | Transport protocol: "http" or "stdio" |
-| `SCOUT_HTTP_HOST` | 127.0.0.1 | HTTP server bind address |
+| `SCOUT_HTTP_HOST` | 0.0.0.0 | HTTP server bind address |
 | `SCOUT_HTTP_PORT` | 8000 | HTTP server port |
 | `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
 | `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |

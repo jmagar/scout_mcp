@@ -15,7 +15,7 @@ class TestMain:
         mock_mcp = MagicMock()
         mock_config = MagicMock()
         mock_config.transport = "http"
-        mock_config.http_host = "127.0.0.1"
+        mock_config.http_host = "0.0.0.0"
         mock_config.http_port = 8000
 
         with patch("scout_mcp.__main__.mcp", mock_mcp), \
@@ -26,7 +26,7 @@ class TestMain:
 
         mock_mcp.run.assert_called_once_with(
             transport="http",
-            host="127.0.0.1",
+            host="0.0.0.0",
             port=8000,
         )
 

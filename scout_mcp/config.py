@@ -22,7 +22,7 @@ class Config:
     idle_timeout: int = 60
     # Transport configuration
     transport: str = "http"  # "http" or "stdio"
-    http_host: str = "127.0.0.1"
+    http_host: str = "0.0.0.0"
     http_port: int = 8000
 
     _hosts: dict[str, SSHHost] = field(default_factory=dict, init=False, repr=False)

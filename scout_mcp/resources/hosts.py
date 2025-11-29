@@ -32,7 +32,11 @@ async def list_hosts_resource() -> str:
 
         lines.append(f"[{status_icon}] {name} ({status})")
         lines.append(f"    SSH:      {host_info}")
-        lines.append(f"    Direct:   {name}://path/to/file")
+        lines.append(f"    Files:    {name}://path/to/file")
+        lines.append(f"    Docker:   {name}://docker/{{container}}/logs")
+        lines.append(f"    Compose:  {name}://compose/{{project}}/logs")
+        lines.append(f"    ZFS:      {name}://zfs")
+        lines.append(f"    Syslog:   {name}://syslog")
         lines.append(f"    Generic:  scout://{name}/path/to/file")
         lines.append("")
 
@@ -41,8 +45,16 @@ async def list_hosts_resource() -> str:
 
     example_hosts = list(sorted(hosts.keys()))[:2]
     for h in example_hosts:
-        lines.append(f"  {h}://etc/hosts          (host-specific)")
-        lines.append(f"  scout://{h}/var/log      (generic fallback)")
+        lines.append(f"  {h}://etc/hosts             (files)")
+        lines.append(f"  {h}://docker                (list containers)")
+        lines.append(f"  {h}://docker/nginx/logs     (container logs)")
+        lines.append(f"  {h}://compose               (list projects)")
+        lines.append(f"  {h}://compose/plex          (compose file)")
+        lines.append(f"  {h}://compose/plex/logs     (stack logs)")
+        lines.append(f"  {h}://zfs                   (zfs overview)")
+        lines.append(f"  {h}://zfs/cache             (pool status)")
+        lines.append(f"  {h}://zfs/snapshots         (all snapshots)")
+        lines.append(f"  {h}://syslog                (system logs)")
 
     lines.append("")
     lines.append("Both URI formats work identically.")

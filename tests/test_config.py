@@ -234,10 +234,10 @@ class TestTransportConfig:
         config = Config(ssh_config_path=tmp_path / "ssh_config")
         assert config.transport == "http"
 
-    def test_default_host_is_localhost(self, tmp_path: Path) -> None:
-        """Default host should be 127.0.0.1."""
+    def test_default_host_is_all_interfaces(self, tmp_path: Path) -> None:
+        """Default host should be 0.0.0.0 (all interfaces)."""
         config = Config(ssh_config_path=tmp_path / "ssh_config")
-        assert config.http_host == "127.0.0.1"
+        assert config.http_host == "0.0.0.0"
 
     def test_default_port_is_8000(self, tmp_path: Path) -> None:
         """Default port should be 8000."""
@@ -256,9 +256,9 @@ class TestTransportConfig:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Host can be set via SCOUT_HTTP_HOST env var."""
-        monkeypatch.setenv("SCOUT_HTTP_HOST", "0.0.0.0")
+        monkeypatch.setenv("SCOUT_HTTP_HOST", "127.0.0.1")
         config = Config(ssh_config_path=tmp_path / "ssh_config")
-        assert config.http_host == "0.0.0.0"
+        assert config.http_host == "127.0.0.1"
 
     def test_port_from_env(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
