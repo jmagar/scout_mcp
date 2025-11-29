@@ -20,6 +20,10 @@ class Config:
     max_file_size: int = 1_048_576  # 1MB
     command_timeout: int = 30
     idle_timeout: int = 60
+    # Transport configuration
+    transport: str = "http"  # "http" or "stdio"
+    http_host: str = "127.0.0.1"
+    http_port: int = 8000
 
     _hosts: dict[str, SSHHost] = field(default_factory=dict, init=False, repr=False)
     _parsed: bool = field(default=False, init=False, repr=False)
@@ -56,6 +60,18 @@ class Config:
         val = get_env_int("SCOUT_IDLE_TIMEOUT", "MCP_CAT_IDLE_TIMEOUT")
         if val is not None:
             self.idle_timeout = val
+
+        # Transport configuration
+        transport = os.getenv("SCOUT_TRANSPORT", "").lower()
+        if transport in ("http", "stdio"):
+            self.transport = transport
+
+        if http_host := os.getenv("SCOUT_HTTP_HOST"):
+            self.http_host = http_host
+
+        http_port = get_env_int("SCOUT_HTTP_PORT", "")
+        if http_port is not None:
+            self.http_port = http_port
 
     def _parse_ssh_config(self) -> None:
         """Parse SSH config file and populate hosts."""

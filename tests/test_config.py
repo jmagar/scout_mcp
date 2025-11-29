@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from scout_mcp.config import Config
 
 
@@ -222,3 +224,62 @@ def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:
     config = Config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 1_048_576  # default
+
+
+class TestTransportConfig:
+    """Tests for transport configuration."""
+
+    def test_default_transport_is_http(self, tmp_path: Path) -> None:
+        """Default transport should be http."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "http"
+
+    def test_default_host_is_localhost(self, tmp_path: Path) -> None:
+        """Default host should be 127.0.0.1."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_host == "127.0.0.1"
+
+    def test_default_port_is_8000(self, tmp_path: Path) -> None:
+        """Default port should be 8000."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 8000
+
+    def test_transport_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Transport can be set via SCOUT_TRANSPORT env var."""
+        monkeypatch.setenv("SCOUT_TRANSPORT", "stdio")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "stdio"
+
+    def test_host_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Host can be set via SCOUT_HTTP_HOST env var."""
+        monkeypatch.setenv("SCOUT_HTTP_HOST", "0.0.0.0")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_host == "0.0.0.0"
+
+    def test_port_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Port can be set via SCOUT_HTTP_PORT env var."""
+        monkeypatch.setenv("SCOUT_HTTP_PORT", "9000")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 9000
+
+    def test_invalid_port_uses_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Invalid port value falls back to default."""
+        monkeypatch.setenv("SCOUT_HTTP_PORT", "not-a-number")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 8000
+
+    def test_invalid_transport_uses_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Invalid transport value falls back to http."""
+        monkeypatch.setenv("SCOUT_TRANSPORT", "invalid")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "http"
