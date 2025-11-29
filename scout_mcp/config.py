@@ -5,16 +5,7 @@ from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 
-
-@dataclass
-class SSHHost:
-    """SSH host configuration."""
-
-    name: str
-    hostname: str
-    user: str = "root"
-    port: int = 22
-    identity_file: str | None = None
+from scout_mcp.models import SSHHost
 
 
 @dataclass

@@ -151,3 +151,20 @@ class TestBackwardCompatibility:
 
         assert mcp is not None
         assert mcp.name == "scout_mcp"
+
+    def test_ssh_host_not_defined_in_config(self) -> None:
+        """SSHHost should only be defined in models, not config."""
+        import inspect
+
+        from scout_mcp import config
+
+        # Get all classes defined directly in config module
+        classes_in_config = [
+            name
+            for name, obj in inspect.getmembers(config, inspect.isclass)
+            if obj.__module__ == "scout_mcp.config"
+        ]
+
+        assert (
+            "SSHHost" not in classes_in_config
+        ), "SSHHost should be imported from models, not defined in config"
