@@ -23,3 +23,38 @@ def get_pool() -> ConnectionPool:
         config = get_config()
         _pool = ConnectionPool(idle_timeout=config.idle_timeout)
     return _pool
+
+
+def reset_state() -> None:
+    """Reset global state for testing.
+
+    This function clears the singleton instances, allowing tests
+    to start with fresh state. Should only be used in test fixtures.
+    """
+    global _config, _pool
+    _config = None
+    _pool = None
+
+
+def set_config(config: Config) -> None:
+    """Set the global config instance.
+
+    Allows tests to inject a custom config without modifying module internals.
+
+    Args:
+        config: Config instance to use globally.
+    """
+    global _config
+    _config = config
+
+
+def set_pool(pool: ConnectionPool) -> None:
+    """Set the global pool instance.
+
+    Allows tests to inject a custom pool without modifying module internals.
+
+    Args:
+        pool: ConnectionPool instance to use globally.
+    """
+    global _pool
+    _pool = pool

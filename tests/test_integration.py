@@ -5,16 +5,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import scout_mcp.services.state as state_module
 from scout_mcp.resources import scout_resource
+from scout_mcp.services import reset_state, set_config
 from scout_mcp.tools import scout
 
 
 @pytest.fixture(autouse=True)
 def reset_globals() -> None:
     """Reset global state before each test."""
-    state_module._config = None
-    state_module._pool = None
+    reset_state()
 
 
 @pytest.fixture
@@ -35,7 +34,7 @@ async def test_scout_hosts_lists_available(mock_ssh_config: Path) -> None:
     """scout('hosts') lists available SSH hosts."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     result = await scout("hosts")
 
@@ -48,7 +47,7 @@ async def test_scout_unknown_host_returns_error() -> None:
     """scout with unknown host returns helpful error."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=Path("/nonexistent"))
+    set_config(Config(ssh_config_path=Path("/nonexistent")))
 
     result = await scout("unknownhost:/path")
 
@@ -70,7 +69,7 @@ async def test_scout_cat_file(mock_ssh_config: Path) -> None:
     """scout with file path cats the file."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -94,7 +93,7 @@ async def test_scout_ls_directory(mock_ssh_config: Path) -> None:
     """scout with directory path lists contents."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -119,7 +118,7 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
     """scout with query runs the command."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -158,7 +157,7 @@ async def test_scout_resource_reads_file(mock_ssh_config: Path) -> None:
     """scout resource reads file contents."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -182,7 +181,7 @@ async def test_scout_resource_lists_directory(mock_ssh_config: Path) -> None:
     """scout resource lists directory contents."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -208,7 +207,7 @@ async def test_scout_resource_unknown_host_raises() -> None:
 
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=Path("/nonexistent"))
+    set_config(Config(ssh_config_path=Path("/nonexistent")))
 
     with pytest.raises(ResourceError, match="Unknown host"):
         await scout_resource("unknownhost", "etc/hosts")
@@ -221,7 +220,7 @@ async def test_scout_resource_path_not_found_raises(mock_ssh_config: Path) -> No
 
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -241,7 +240,7 @@ async def test_scout_resource_normalizes_path(mock_ssh_config: Path) -> None:
     """scout resource adds leading slash to paths."""
     from scout_mcp.config import Config
 
-    state_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False

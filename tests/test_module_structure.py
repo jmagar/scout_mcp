@@ -4,7 +4,6 @@ These tests verify that the new module structure is in place
 and all imports work correctly from the new locations.
 """
 
-import pytest
 
 
 class TestModelsModule:
@@ -81,6 +80,12 @@ class TestServicesModule:
         assert callable(run_command)
         assert callable(stat_path)
         assert callable(tree_dir)
+
+    def test_import_reset_state(self) -> None:
+        """reset_state should be importable from services."""
+        from scout_mcp.services import reset_state
+
+        assert callable(reset_state)
 
 
 class TestUtilsModule:
