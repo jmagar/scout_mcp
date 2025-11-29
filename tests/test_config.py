@@ -170,17 +170,49 @@ def test_unreadable_config_file_treated_as_empty(tmp_path: Path) -> None:
         ssh_config.chmod(0o644)
 
 
-def test_env_vars_override_defaults(tmp_path: Path, monkeypatch) -> None:
-    """Environment variables override default config values."""
-    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "5242880")
-    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "60")
-    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "120")
+def test_env_vars_override_defaults_with_scout_prefix(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Environment variables with SCOUT_ prefix override default config values."""
+    monkeypatch.setenv("SCOUT_MAX_FILE_SIZE", "5242880")
+    monkeypatch.setenv("SCOUT_COMMAND_TIMEOUT", "60")
+    monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
 
     config = Config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 5242880
     assert config.command_timeout == 60
     assert config.idle_timeout == 120
+
+
+def test_legacy_mcp_cat_env_vars_still_work(tmp_path: Path, monkeypatch) -> None:
+    """Legacy MCP_CAT_* env vars still work for backward compatibility."""
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "2097152")
+    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "45")
+    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "90")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 2097152
+    assert config.command_timeout == 45
+    assert config.idle_timeout == 90
+
+
+def test_scout_prefix_takes_precedence_over_legacy(tmp_path: Path, monkeypatch) -> None:
+    """SCOUT_* env vars take precedence over legacy MCP_CAT_* vars."""
+    # Set both legacy and new
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "1000000")
+    monkeypatch.setenv("SCOUT_MAX_FILE_SIZE", "2000000")
+    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "30")
+    monkeypatch.setenv("SCOUT_COMMAND_TIMEOUT", "60")
+    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "60")
+    monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 2000000  # SCOUT_ wins
+    assert config.command_timeout == 60  # SCOUT_ wins
+    assert config.idle_timeout == 120  # SCOUT_ wins
 
 
 def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:

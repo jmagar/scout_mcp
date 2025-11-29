@@ -63,11 +63,14 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 ### Environment Variables
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `MCP_CAT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
-| `MCP_CAT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
-| `MCP_CAT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
+| `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
+| `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
+| `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
 | `SCOUT_LOG_PAYLOADS` | false | Enable payload logging |
 | `SCOUT_SLOW_THRESHOLD_MS` | 1000 | Slow request threshold |
+| `SCOUT_INCLUDE_TRACEBACK` | false | Include tracebacks in error logs |
+
+Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
 
 ### MCP Client Configuration
 ```json

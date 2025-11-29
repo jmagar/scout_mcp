@@ -25,21 +25,37 @@ class Config:
     _parsed: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        """Apply environment variable overrides."""
+        """Apply environment variable overrides.
+
+        Supports both SCOUT_* (preferred) and legacy MCP_CAT_* prefixes.
+        SCOUT_* takes precedence if both are set.
+        """
         import os
         from contextlib import suppress
 
-        if val := os.getenv("MCP_CAT_MAX_FILE_SIZE"):
-            with suppress(ValueError):
-                self.max_file_size = int(val)
+        # Helper to get env var with fallback to legacy prefix
+        def get_env_int(scout_key: str, legacy_key: str) -> int | None:
+            # SCOUT_* takes precedence
+            if val := os.getenv(scout_key):
+                with suppress(ValueError):
+                    return int(val)
+            # Fall back to legacy MCP_CAT_*
+            if val := os.getenv(legacy_key):
+                with suppress(ValueError):
+                    return int(val)
+            return None
 
-        if val := os.getenv("MCP_CAT_COMMAND_TIMEOUT"):
-            with suppress(ValueError):
-                self.command_timeout = int(val)
+        val = get_env_int("SCOUT_MAX_FILE_SIZE", "MCP_CAT_MAX_FILE_SIZE")
+        if val is not None:
+            self.max_file_size = val
 
-        if val := os.getenv("MCP_CAT_IDLE_TIMEOUT"):
-            with suppress(ValueError):
-                self.idle_timeout = int(val)
+        val = get_env_int("SCOUT_COMMAND_TIMEOUT", "MCP_CAT_COMMAND_TIMEOUT")
+        if val is not None:
+            self.command_timeout = val
+
+        val = get_env_int("SCOUT_IDLE_TIMEOUT", "MCP_CAT_IDLE_TIMEOUT")
+        if val is not None:
+            self.idle_timeout = val
 
     def _parse_ssh_config(self) -> None:
         """Parse SSH config file and populate hosts."""

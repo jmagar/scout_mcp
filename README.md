@@ -17,9 +17,11 @@ Scout MCP reads your `~/.ssh/config` to discover available hosts. Optionally con
 
 ```bash
 # Environment variables (optional)
-export MCP_CAT_MAX_FILE_SIZE=5242880  # 5MB (default: 1MB)
-export MCP_CAT_COMMAND_TIMEOUT=60      # seconds (default: 30)
-export MCP_CAT_IDLE_TIMEOUT=120        # seconds (default: 60)
+export SCOUT_MAX_FILE_SIZE=5242880   # 5MB (default: 1MB)
+export SCOUT_COMMAND_TIMEOUT=60      # seconds (default: 30)
+export SCOUT_IDLE_TIMEOUT=120        # seconds (default: 60)
+
+# Legacy MCP_CAT_* prefix still supported for backward compatibility
 ```
 
 **Current defaults:**
