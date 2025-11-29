@@ -37,6 +37,7 @@ async def test_get_connection_creates_new_connection(mock_ssh_host: SSHHost) -> 
             port=mock_ssh_host.port,
             username=mock_ssh_host.user,
             known_hosts=None,
+            client_keys=None,
         )
 
 
@@ -94,3 +95,23 @@ async def test_close_all_connections(mock_ssh_host: SSHHost) -> None:
         await pool.close_all()
 
         mock_conn.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_connection_uses_identity_file(mock_ssh_host: SSHHost) -> None:
+    """Connection uses identity file when specified."""
+    mock_ssh_host.identity_file = "~/.ssh/id_ed25519"
+    pool = ConnectionPool(idle_timeout=60)
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        await pool.get_connection(mock_ssh_host)
+
+        mock_connect.assert_called_once()
+        call_kwargs = mock_connect.call_args[1]
+        assert "client_keys" in call_kwargs
+        assert call_kwargs["client_keys"] == ["~/.ssh/id_ed25519"]

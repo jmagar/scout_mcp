@@ -50,11 +50,13 @@ class ConnectionPool:
                 return pooled.connection
 
             # Create new connection
+            client_keys = [host.identity_file] if host.identity_file else None
             conn = await asyncssh.connect(
                 host.hostname,
                 port=host.port,
                 username=host.user,
                 known_hosts=None,
+                client_keys=client_keys,
             )
 
             self._connections[host.name] = PooledConnection(connection=conn)
