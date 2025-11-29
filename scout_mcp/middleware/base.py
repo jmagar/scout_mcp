@@ -1,7 +1,6 @@
 """Base middleware classes for Scout MCP."""
 
 import logging
-from typing import Any
 
 from fastmcp.server.middleware import Middleware
 

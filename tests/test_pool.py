@@ -3,8 +3,9 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from mcp_cat.config import SSHHost
-from mcp_cat.pool import ConnectionPool
+
+from scout_mcp.config import SSHHost
+from scout_mcp.pool import ConnectionPool
 
 
 @pytest.fixture
@@ -115,3 +116,31 @@ async def test_get_connection_uses_identity_file(mock_ssh_host: SSHHost) -> None
         call_kwargs = mock_connect.call_args[1]
         assert "client_keys" in call_kwargs
         assert call_kwargs["client_keys"] == ["~/.ssh/id_ed25519"]
+
+
+@pytest.mark.asyncio
+async def test_remove_connection_existing(mock_ssh_host: SSHHost) -> None:
+    """remove_connection removes connection from pool."""
+    pool = ConnectionPool(idle_timeout=60)
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        await pool.get_connection(mock_ssh_host)
+        assert mock_ssh_host.name in pool._connections
+
+        await pool.remove_connection(mock_ssh_host.name)
+        assert mock_ssh_host.name not in pool._connections
+        mock_conn.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_remove_connection_nonexistent(mock_ssh_host: SSHHost) -> None:
+    """remove_connection handles non-existent connection gracefully."""
+    pool = ConnectionPool(idle_timeout=60)
+
+    # Should not raise an error
+    await pool.remove_connection("nonexistent_host")

@@ -1,4 +1,4 @@
-# MCP-Cat Implementation Plan
+# Scout MCP Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -20,15 +20,15 @@
 **Step 1: Initialize project with uv**
 
 ```bash
-cd /code/mcp-cat
-uv init --lib --name mcp-cat
+cd /code/scout_mcp
+uv init --lib --name scout_mcp
 ```
 
 **Step 2: Update pyproject.toml with dependencies**
 
 ```toml
 [project]
-name = "mcp-cat"
+name = "scout_mcp"
 version = "0.1.0"
 description = "MCP server for remote file operations via SSH"
 readme = "README.md"
@@ -70,7 +70,7 @@ testpaths = ["tests"]
 
 ```python
 # scout_mcp/mcp_cat/__init__.py
-"""MCP-Cat: Remote file operations via SSH."""
+"""Scout MCP: Remote file operations via SSH."""
 
 __version__ = "0.1.0"
 ```
@@ -78,7 +78,7 @@ __version__ = "0.1.0"
 **Step 4: Create README**
 
 ```markdown
-# MCP-Cat
+# Scout MCP
 
 MCP server for remote file operations via SSH.
 
@@ -229,7 +229,7 @@ Expected: FAIL with "ModuleNotFoundError: No module named 'mcp_cat.config'"
 
 ```python
 # scout_mcp/mcp_cat/config.py
-"""Configuration management for MCP-Cat."""
+"""Configuration management for Scout MCP."""
 
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
@@ -250,7 +250,7 @@ class SSHHost:
 
 @dataclass
 class Config:
-    """MCP-Cat configuration."""
+    """Scout MCP configuration."""
 
     ssh_config_path: Path = field(default_factory=lambda: Path.home() / ".ssh" / "config")
     allowlist: list[str] = field(default_factory=list)
@@ -1042,7 +1042,7 @@ git commit -m "feat: add scout URI parsing and target detection"
 
 ```python
 # scout_mcp/mcp_cat/server.py
-"""MCP-Cat FastMCP server."""
+"""Scout MCP FastMCP server."""
 
 from fastmcp import FastMCP
 
@@ -1052,7 +1052,7 @@ from mcp_cat.pool import ConnectionPool
 from mcp_cat.scout import parse_target
 
 # Initialize server
-mcp = FastMCP("mcp-cat")
+mcp = FastMCP("scout_mcp")
 
 # Global state (initialized on startup)
 _config: Config | None = None
@@ -1173,7 +1173,7 @@ async def scout(target: str, query: str | None = None) -> str:
 
 ```python
 # scout_mcp/mcp_cat/__main__.py
-"""Entry point for mcp-cat server."""
+"""Entry point for scout_mcp server."""
 
 from mcp_cat.server import mcp
 
@@ -1207,7 +1207,7 @@ git commit -m "feat: add FastMCP server with scout tool"
 
 ```python
 # tests/test_integration.py
-"""Integration tests for MCP-Cat server."""
+"""Integration tests for Scout MCP server."""
 
 from unittest.mock import AsyncMock, patch, MagicMock
 from pathlib import Path
@@ -1376,7 +1376,7 @@ git commit -m "test: add integration tests for scout tool"
 **Step 1: Update README with full documentation**
 
 ```markdown
-# MCP-Cat
+# Scout MCP
 
 MCP server for remote file operations via SSH. Scout your fleet of machines with a single tool.
 
@@ -1385,13 +1385,13 @@ MCP server for remote file operations via SSH. Scout your fleet of machines with
 ```bash
 # Clone and install
 git clone <repo-url>
-cd mcp-cat
+cd scout_mcp
 uv sync
 ```
 
 ## Configuration
 
-MCP-Cat reads your `~/.ssh/config` to discover available hosts. Optionally configure limits:
+Scout MCP reads your `~/.ssh/config` to discover available hosts. Optionally configure limits:
 
 ```bash
 # Environment variables
@@ -1407,9 +1407,9 @@ Add to your Claude Code MCP config:
 ```json
 {
   "mcpServers": {
-    "mcp-cat": {
+    "scout_mcp": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/mcp-cat", "python", "-m", "mcp_cat"]
+      "args": ["run", "--directory", "/path/to/scout_mcp", "python", "-m", "mcp_cat"]
     }
   }
 }

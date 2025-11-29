@@ -1,7 +1,6 @@
 """Tests for middleware base classes."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from scout_mcp.middleware.base import ScoutMiddleware
 

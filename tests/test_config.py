@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from mcp_cat.config import Config
+from scout_mcp.config import Config
 
 
 def test_parse_ssh_config_extracts_hosts(tmp_path: Path) -> None:
@@ -47,10 +47,7 @@ Host production
     User deploy
 """)
 
-    config = Config(
-        ssh_config_path=ssh_config,
-        allowlist=["dookie", "tootie"]
-    )
+    config = Config(ssh_config_path=ssh_config, allowlist=["dookie", "tootie"])
     hosts = config.get_hosts()
 
     assert "dookie" in hosts
@@ -71,10 +68,7 @@ Host production
     User deploy
 """)
 
-    config = Config(
-        ssh_config_path=ssh_config,
-        blocklist=["production"]
-    )
+    config = Config(ssh_config_path=ssh_config, blocklist=["production"])
     hosts = config.get_hosts()
 
     assert "dookie" in hosts

@@ -1,32 +1,15 @@
 """SSH connection pooling with lazy disconnect."""
 
 import asyncio
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import asyncssh
 
+from scout_mcp.models import PooledConnection
+
 if TYPE_CHECKING:
-    from mcp_cat.config import SSHHost
-
-
-@dataclass
-class PooledConnection:
-    """A pooled SSH connection with last-used timestamp."""
-
-    connection: asyncssh.SSHClientConnection
-    last_used: datetime = field(default_factory=datetime.now)
-
-    def touch(self) -> None:
-        """Update last-used timestamp."""
-        self.last_used = datetime.now()
-
-    @property
-    def is_stale(self) -> bool:
-        """Check if connection was closed."""
-        is_closed: bool = self.connection.is_closed  # type: ignore[assignment]
-        return is_closed
+    from scout_mcp.models import SSHHost
 
 
 class ConnectionPool:
@@ -100,3 +83,15 @@ class ConnectionPool:
 
             if self._cleanup_task and not self._cleanup_task.done():
                 self._cleanup_task.cancel()
+
+    async def remove_connection(self, host_name: str) -> None:
+        """Remove a specific connection from the pool.
+
+        Args:
+            host_name: Name of the host to remove.
+        """
+        async with self._lock:
+            if host_name in self._connections:
+                pooled = self._connections[host_name]
+                pooled.connection.close()
+                del self._connections[host_name]

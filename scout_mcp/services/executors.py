@@ -1,19 +1,11 @@
 """SSH command executors for file operations."""
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from scout_mcp.models import CommandResult
 
 if TYPE_CHECKING:
     import asyncssh
-
-
-@dataclass
-class CommandResult:
-    """Result of a remote command execution."""
-
-    output: str
-    error: str
-    returncode: int
 
 
 async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | None:
@@ -22,10 +14,7 @@ async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | No
     Returns:
         'file', 'directory', or None if path doesn't exist.
     """
-    result = await conn.run(
-        f'stat -c "%F" {path!r} 2>/dev/null',
-        check=False
-    )
+    result = await conn.run(f'stat -c "%F" {path!r} 2>/dev/null', check=False)
 
     if result.returncode != 0:
         return None
@@ -52,19 +41,16 @@ async def cat_file(
     conn: "asyncssh.SSHClientConnection",
     path: str,
     max_size: int,
-) -> str:
+) -> tuple[str, bool]:
     """Read file contents, limited to max_size bytes.
 
     Returns:
-        File contents as string.
+        Tuple of (file contents as string, was_truncated boolean).
 
     Raises:
         RuntimeError: If file cannot be read.
     """
-    result = await conn.run(
-        f'head -c {max_size} {path!r}',
-        check=False
-    )
+    result = await conn.run(f"head -c {max_size} {path!r}", check=False)
 
     if result.returncode != 0:
         stderr = result.stderr
@@ -76,10 +62,17 @@ async def cat_file(
 
     stdout = result.stdout
     if stdout is None:
-        return ""
+        return ("", False)
+
     if isinstance(stdout, bytes):
-        return stdout.decode("utf-8", errors="replace")
-    return stdout
+        content = stdout.decode("utf-8", errors="replace")
+    else:
+        content = stdout
+
+    # Check if file was truncated by comparing output length to max_size
+    was_truncated = len(content.encode("utf-8")) >= max_size
+
+    return (content, was_truncated)
 
 
 async def ls_dir(conn: "asyncssh.SSHClientConnection", path: str) -> str:
@@ -91,10 +84,7 @@ async def ls_dir(conn: "asyncssh.SSHClientConnection", path: str) -> str:
     Raises:
         RuntimeError: If directory cannot be listed.
     """
-    result = await conn.run(
-        f'ls -la {path!r}',
-        check=False
-    )
+    result = await conn.run(f"ls -la {path!r}", check=False)
 
     if result.returncode != 0:
         stderr = result.stderr
@@ -103,6 +93,51 @@ async def ls_dir(conn: "asyncssh.SSHClientConnection", path: str) -> str:
         else:
             error_msg = stderr or ""
         raise RuntimeError(f"Failed to list {path}: {error_msg}")
+
+    stdout = result.stdout
+    if stdout is None:
+        return ""
+    if isinstance(stdout, bytes):
+        return stdout.decode("utf-8", errors="replace")
+    return stdout
+
+
+async def tree_dir(
+    conn: "asyncssh.SSHClientConnection",
+    path: str,
+    max_depth: int = 3,
+) -> str:
+    """Show directory tree structure.
+
+    Tries 'tree' command first, falls back to 'find' if unavailable.
+
+    Args:
+        conn: SSH connection to execute command on.
+        path: Directory path to show tree for.
+        max_depth: Maximum depth to traverse (default: 3).
+
+    Returns:
+        Directory tree as formatted string.
+    """
+    # Try tree command first
+    result = await conn.run(
+        f"tree -L {max_depth} --noreport {path!r} 2>/dev/null", check=False
+    )
+
+    if result.returncode == 0:
+        stdout = result.stdout
+        if stdout is None:
+            return ""
+        if isinstance(stdout, bytes):
+            return stdout.decode("utf-8", errors="replace")
+        return stdout
+
+    # Fall back to find
+    find_cmd = (
+        f"find {path!r} -maxdepth {max_depth} -type f -o -type d "
+        f"2>/dev/null | head -100"
+    )
+    result = await conn.run(find_cmd, check=False)
 
     stdout = result.stdout
     if stdout is None:
@@ -123,7 +158,7 @@ async def run_command(
     Returns:
         CommandResult with stdout, stderr, and return code.
     """
-    full_command = f'cd {working_dir!r} && timeout {timeout} {command}'
+    full_command = f"cd {working_dir!r} && timeout {timeout} {command}"
 
     result = await conn.run(full_command, check=False)
 

@@ -33,9 +33,7 @@ def parse_target(target: str) -> ScoutTarget:
 
     # Parse host:/path format
     if ":" not in target:
-        raise ValueError(
-            f"Invalid target '{target}'. Expected 'host:/path' or 'hosts'"
-        )
+        raise ValueError(f"Invalid target '{target}'. Expected 'host:/path' or 'hosts'")
 
     # Split on first colon only (path may contain colons)
     parts = target.split(":", 1)

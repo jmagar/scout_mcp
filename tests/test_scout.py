@@ -1,7 +1,8 @@
 """Tests for scout URI parsing and intent detection."""
 
 import pytest
-from mcp_cat.scout import parse_target
+
+from scout_mcp.scout import parse_target
 
 
 def test_parse_target_file_uri() -> None:

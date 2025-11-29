@@ -1,8 +1,8 @@
-# MCP-Cat Enhancements Implementation Plan
+# Scout MCP Enhancements Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add 6 enhancements to MCP-Cat: identity file support, hosts resource, truncation notices, tree command, env var config, and connection retry.
+**Goal:** Add 6 enhancements to Scout MCP: identity file support, hosts resource, truncation notices, tree command, env var config, and connection retry.
 
 **Architecture:** Minimal changes to existing modules - each enhancement is isolated and testable.
 

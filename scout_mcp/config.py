@@ -1,4 +1,4 @@
-"""Configuration management for MCP-Cat."""
+"""Configuration management for Scout MCP."""
 
 import re
 from dataclasses import dataclass, field
@@ -19,7 +19,7 @@ class SSHHost:
 
 @dataclass
 class Config:
-    """MCP-Cat configuration."""
+    """Scout MCP configuration."""
 
     ssh_config_path: Path = field(
         default_factory=lambda: Path.home() / ".ssh" / "config"
