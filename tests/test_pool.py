@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from scout_mcp.config import SSHHost
-from scout_mcp.pool import ConnectionPool
+from scout_mcp.models import SSHHost
+from scout_mcp.services.pool import ConnectionPool
 
 
 @pytest.fixture

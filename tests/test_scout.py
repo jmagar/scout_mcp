@@ -2,7 +2,7 @@
 
 import pytest
 
-from scout_mcp.scout import parse_target
+from scout_mcp.utils.parser import parse_target
 
 
 def test_parse_target_file_uri() -> None:

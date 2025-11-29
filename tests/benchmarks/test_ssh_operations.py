@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from scout_mcp.executors import cat_file, ls_dir, run_command, stat_path
+from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_path
 
 
 class MockSSHResult:

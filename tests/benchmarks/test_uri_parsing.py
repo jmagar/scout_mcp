@@ -4,7 +4,7 @@ import contextlib
 import statistics
 import time
 
-from scout_mcp.scout import parse_target
+from scout_mcp.utils.parser import parse_target
 
 
 def test_uri_parsing_latency() -> None:

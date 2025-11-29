@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scout_mcp.executors import cat_file, ls_dir, run_command, stat_path
+from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_path
 
 
 @pytest.fixture
@@ -150,7 +150,7 @@ async def test_run_command_includes_stderr(mock_connection: AsyncMock) -> None:
 @pytest.mark.asyncio
 async def test_tree_dir_returns_tree_output(mock_connection: AsyncMock) -> None:
     """tree_dir returns tree output when available."""
-    from scout_mcp.executors import tree_dir
+    from scout_mcp.services.executors import tree_dir
 
     mock_connection.run.return_value = MagicMock(
         stdout=".\n├── file1.txt\n└── subdir/", returncode=0
@@ -165,7 +165,7 @@ async def test_tree_dir_returns_tree_output(mock_connection: AsyncMock) -> None:
 @pytest.mark.asyncio
 async def test_tree_dir_falls_back_to_find(mock_connection: AsyncMock) -> None:
     """tree_dir falls back to find when tree unavailable."""
-    from scout_mcp.executors import tree_dir
+    from scout_mcp.services.executors import tree_dir
 
     # First call (tree) fails, second call (find) succeeds
     mock_connection.run.side_effect = [

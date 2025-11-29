@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scout_mcp.ping import check_host_online, check_hosts_online
+from scout_mcp.utils.ping import check_host_online, check_hosts_online
 
 
 @pytest.mark.asyncio

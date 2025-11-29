@@ -1,15 +1,6 @@
-"""Scout tool URI parsing and intent detection."""
+"""Scout target URI parsing."""
 
-from dataclasses import dataclass
-
-
-@dataclass
-class ScoutTarget:
-    """Parsed scout target."""
-
-    host: str | None
-    path: str = ""
-    is_hosts_command: bool = False
+from scout_mcp.models import ScoutTarget
 
 
 def parse_target(target: str) -> ScoutTarget:
