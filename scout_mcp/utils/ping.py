@@ -39,13 +39,14 @@ async def check_hosts_online(
     Returns:
         Dict of {name: is_online}.
     """
-    tasks = {
-        name: check_host_online(hostname, port, timeout)
-        for name, (hostname, port) in hosts.items()
-    }
+    if not hosts:
+        return {}
 
-    results = {}
-    for name, coro in tasks.items():
-        results[name] = await coro
+    names = list(hosts.keys())
+    coros = [
+        check_host_online(hostname, port, timeout)
+        for hostname, port in hosts.values()
+    ]
 
-    return results
+    results = await asyncio.gather(*coros)
+    return dict(zip(names, results))
