@@ -5,6 +5,9 @@ All business logic is delegated to the tools/, resources/, and services/ modules
 """
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 from fastmcp import FastMCP
 
@@ -14,7 +17,56 @@ from scout_mcp.middleware import (
     TimingMiddleware,
 )
 from scout_mcp.resources import list_hosts_resource, scout_resource
+from scout_mcp.services import get_config
 from scout_mcp.tools import scout
+
+
+async def _read_host_path(host: str, path: str) -> str:
+    """Read a file or directory on a remote host.
+
+    Args:
+        host: SSH host name
+        path: Remote path to read
+
+    Returns:
+        File contents or directory listing
+    """
+    return await scout_resource(host, path)
+
+
+@asynccontextmanager
+async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
+    """Register dynamic host resources at startup.
+
+    Reads SSH hosts from config and registers a resource template
+    for each host, enabling URIs like tootie://path/to/file.
+
+    Args:
+        server: The FastMCP server instance
+
+    Yields:
+        Dict with hosts list
+    """
+    config = get_config()
+    hosts = config.get_hosts()
+
+    for host_name in hosts:
+
+        def make_handler(h: str) -> Any:
+            async def handler(path: str) -> str:
+                return await _read_host_path(h, path)
+
+            return handler
+
+        # Use the resource decorator to register template
+        server.resource(
+            uri=f"{host_name}://{{path*}}",
+            name=f"{host_name} filesystem",
+            description=f"Read files and directories on {host_name}",
+            mime_type="text/plain",
+        )(make_handler(host_name))
+
+    yield {"hosts": list(hosts.keys())}
 
 
 def configure_middleware(server: FastMCP) -> None:
@@ -41,15 +93,28 @@ def configure_middleware(server: FastMCP) -> None:
     server.add_middleware(LoggingMiddleware(include_payloads=log_payloads))
 
 
-# Initialize server
-mcp = FastMCP("scout_mcp")
+def create_server() -> FastMCP:
+    """Create and configure the MCP server with all middleware and resources.
 
-# Configure middleware stack
-configure_middleware(mcp)
+    Returns:
+        Configured FastMCP server instance
+    """
+    server = FastMCP(
+        "scout_mcp",
+        lifespan=app_lifespan,
+    )
 
-# Register tools
-mcp.tool()(scout)
+    configure_middleware(server)
 
-# Register resources
-mcp.resource("scout://{host}/{path*}")(scout_resource)
-mcp.resource("hosts://list")(list_hosts_resource)
+    # Register tools
+    server.tool()(scout)
+
+    # Register resources
+    server.resource("scout://{host}/{path*}")(scout_resource)
+    server.resource("hosts://list")(list_hosts_resource)
+
+    return server
+
+
+# Default server instance
+mcp = create_server()
