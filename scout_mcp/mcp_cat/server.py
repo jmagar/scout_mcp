@@ -125,3 +125,36 @@ async def scout(target: str, query: str | None = None) -> str:
 
     except Exception as e:
         return f"Error: {e}"
+
+
+@mcp.resource("hosts://list")
+async def list_hosts_resource() -> str:
+    """List available SSH hosts with online status.
+
+    Returns:
+        Formatted list of available SSH hosts with connectivity status.
+    """
+    from mcp_cat.ping import check_hosts_online
+
+    config = get_config()
+    hosts = config.get_hosts()
+
+    if not hosts:
+        return "No SSH hosts configured."
+
+    # Build dict for concurrent checking
+    host_endpoints = {
+        name: (host.hostname, host.port)
+        for name, host in hosts.items()
+    }
+
+    # Check all hosts concurrently
+    online_status = await check_hosts_online(host_endpoints, timeout=2.0)
+
+    lines = ["Available SSH hosts:"]
+    for name, host in sorted(hosts.items()):
+        status = "online" if online_status.get(name) else "offline"
+        status_icon = "\u2713" if online_status.get(name) else "\u2717"
+        host_info = f"{host.user}@{host.hostname}:{host.port}"
+        lines.append(f"  [{status_icon}] {name} -> {host_info} ({status})")
+    return "\n".join(lines)

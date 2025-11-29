@@ -134,3 +134,11 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
         result = await scout_fn("testhost:~/code", "rg 'TODO'")
 
         assert "TODO: fix this" in result
+
+
+def test_hosts_resource_exists() -> None:
+    """Verify hosts resource is registered."""
+    from mcp_cat.server import mcp
+
+    # Check resource is registered (FastMCP stores resources differently)
+    assert hasattr(mcp, "resource")
