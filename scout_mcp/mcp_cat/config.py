@@ -33,6 +33,23 @@ class Config:
     _hosts: dict[str, SSHHost] = field(default_factory=dict, init=False, repr=False)
     _parsed: bool = field(default=False, init=False, repr=False)
 
+    def __post_init__(self) -> None:
+        """Apply environment variable overrides."""
+        import os
+        from contextlib import suppress
+
+        if val := os.getenv("MCP_CAT_MAX_FILE_SIZE"):
+            with suppress(ValueError):
+                self.max_file_size = int(val)
+
+        if val := os.getenv("MCP_CAT_COMMAND_TIMEOUT"):
+            with suppress(ValueError):
+                self.command_timeout = int(val)
+
+        if val := os.getenv("MCP_CAT_IDLE_TIMEOUT"):
+            with suppress(ValueError):
+                self.idle_timeout = int(val)
+
     def _parse_ssh_config(self) -> None:
         """Parse SSH config file and populate hosts."""
         if self._parsed:

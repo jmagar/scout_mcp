@@ -174,3 +174,25 @@ def test_unreadable_config_file_treated_as_empty(tmp_path: Path) -> None:
     finally:
         # Restore permissions for cleanup
         ssh_config.chmod(0o644)
+
+
+def test_env_vars_override_defaults(tmp_path: Path, monkeypatch) -> None:
+    """Environment variables override default config values."""
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "5242880")
+    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "60")
+    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "120")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 5242880
+    assert config.command_timeout == 60
+    assert config.idle_timeout == 120
+
+
+def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:
+    """Invalid environment variable values fall back to defaults."""
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "not_a_number")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 1_048_576  # default
