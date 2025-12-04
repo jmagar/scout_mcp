@@ -39,7 +39,7 @@ async def test_syslog_resource_returns_logs(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.syslog.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.syslog.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.syslog.syslog_read",
         return_value=(log_content, "journalctl"),
@@ -66,7 +66,7 @@ async def test_syslog_resource_no_logs_available(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.syslog.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.syslog.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.syslog.syslog_read",
         return_value=("", "none"),

@@ -1,6 +1,7 @@
 """Scout target URI parsing."""
 
 from scout_mcp.models import ScoutTarget
+from scout_mcp.utils.validation import PathTraversalError, validate_host, validate_path
 
 
 def parse_target(target: str) -> ScoutTarget:
@@ -15,6 +16,7 @@ def parse_target(target: str) -> ScoutTarget:
 
     Raises:
         ValueError: If target format is invalid.
+        PathTraversalError: If path contains traversal sequences.
     """
     target = target.strip()
 
@@ -31,10 +33,12 @@ def parse_target(target: str) -> ScoutTarget:
     host = parts[0].strip()
     path = parts[1].strip() if len(parts) > 1 else ""
 
-    if not host:
-        raise ValueError("Host cannot be empty")
+    # Validate host
+    host = validate_host(host)
 
+    # Validate path
     if not path:
         raise ValueError("Path cannot be empty")
+    path = validate_path(path)
 
     return ScoutTarget(host=host, path=path)

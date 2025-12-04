@@ -2,7 +2,10 @@
 
 import shlex
 
+import pytest
+
 from scout_mcp.utils.shell import quote_arg, quote_path
+from scout_mcp.utils.validation import PathTraversalError, validate_host, validate_path
 
 
 class TestShellQuoting:
@@ -154,3 +157,70 @@ class TestShellQuoting:
         assert safe_parts[1] == malicious
         # And no command injection is possible
         assert "rm" not in [safe_parts[0]]
+
+
+class TestPathTraversalProtection:
+    """Test path traversal protection in validation."""
+
+    def test_rejects_parent_directory_traversal(self):
+        """Test that parent directory traversal is blocked."""
+        with pytest.raises(PathTraversalError):
+            validate_path("../../../etc/passwd")
+
+    def test_rejects_embedded_traversal(self):
+        """Test that embedded path traversal is blocked."""
+        with pytest.raises(PathTraversalError):
+            validate_path("/var/log/../../../etc/passwd")
+
+    def test_rejects_null_byte_injection(self):
+        """Test that null byte injection is blocked."""
+        with pytest.raises(PathTraversalError):
+            validate_path("/etc/passwd\x00.txt")
+
+    def test_accepts_normal_absolute_path(self):
+        """Test that normal absolute paths are accepted."""
+        assert validate_path("/etc/passwd") == "/etc/passwd"
+
+    def test_accepts_normal_relative_path(self):
+        """Test that normal relative paths are accepted."""
+        assert validate_path("etc/passwd") == "etc/passwd"
+
+    def test_accepts_home_directory_path(self):
+        """Test that home directory paths are accepted."""
+        assert validate_path("~/.ssh/config") == "~/.ssh/config"
+
+
+class TestHostValidation:
+    """Test host validation protection."""
+
+    def test_rejects_command_injection_in_host(self):
+        """Test that command injection in host is blocked."""
+        with pytest.raises(ValueError):
+            validate_host("host;rm -rf /")
+
+    def test_rejects_pipe_in_host(self):
+        """Test that pipes in host are blocked."""
+        with pytest.raises(ValueError):
+            validate_host("host|cat /etc/passwd")
+
+    def test_rejects_dollar_expansion_in_host(self):
+        """Test that variable expansion in host is blocked."""
+        with pytest.raises(ValueError):
+            validate_host("host$VAR")
+
+    def test_rejects_backtick_substitution_in_host(self):
+        """Test that command substitution in host is blocked."""
+        with pytest.raises(ValueError):
+            validate_host("host`whoami`")
+
+    def test_accepts_normal_hostname(self):
+        """Test that normal hostnames are accepted."""
+        assert validate_host("myserver") == "myserver"
+
+    def test_accepts_fqdn(self):
+        """Test that FQDNs are accepted."""
+        assert validate_host("server.example.com") == "server.example.com"
+
+    def test_accepts_ip_address(self):
+        """Test that IP addresses are accepted."""
+        assert validate_host("192.168.1.100") == "192.168.1.100"

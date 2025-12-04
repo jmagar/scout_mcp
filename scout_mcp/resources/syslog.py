@@ -2,7 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import syslog_read
 
 
@@ -20,7 +20,6 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
         Formatted system log output.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -30,15 +29,9 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Get logs (dynamically detects journalctl vs syslog)
     logs, source = await syslog_read(conn, lines=lines)

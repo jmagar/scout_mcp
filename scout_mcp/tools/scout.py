@@ -2,16 +2,15 @@
 
 import logging
 
-from scout_mcp.services import get_config, get_pool
-from scout_mcp.services.executors import (
-    cat_file,
-    ls_dir,
-    run_command,
-    stat_path,
-    tree_dir,
+from scout_mcp.services import get_config
+from scout_mcp.tools.handlers import (
+    determine_path_type,
+    handle_command_execution,
+    handle_directory_list,
+    handle_file_read,
+    handle_hosts_list,
 )
 from scout_mcp.utils.parser import parse_target
-from scout_mcp.utils.ping import check_hosts_online
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,8 @@ async def scout(target: str, query: str | None = None, tree: bool = False) -> st
         File contents, directory listing, command output, or host list.
     """
     config = get_config()
-    pool = get_pool()
 
+    # Parse target
     try:
         parsed = parse_target(target)
     except ValueError as e:
@@ -46,101 +45,25 @@ async def scout(target: str, query: str | None = None, tree: bool = False) -> st
 
     # Handle hosts command
     if parsed.is_hosts_command:
-        hosts = config.get_hosts()
-        if not hosts:
-            return "No SSH hosts configured."
+        return await handle_hosts_list()
 
-        # Check online status for all hosts concurrently
-        host_endpoints = {
-            name: (host.hostname, host.port) for name, host in hosts.items()
-        }
-        online_status = await check_hosts_online(host_endpoints, timeout=2.0)
-
-        lines = ["Available hosts:"]
-        for name, host in sorted(hosts.items()):
-            status_icon = "✓" if online_status.get(name) else "✗"
-            status_text = "online" if online_status.get(name) else "offline"
-            lines.append(
-                f"  [{status_icon}] {name} ({status_text}) "
-                f"-> {host.user}@{host.hostname}:{host.port}"
-            )
-        return "\n".join(lines)
-
-    # Validate host
+    # Validate host exists
     ssh_host = config.get_host(parsed.host)  # type: ignore[arg-type]
     if ssh_host is None:
         available = ", ".join(sorted(config.get_hosts().keys()))
         return f"Error: Unknown host '{parsed.host}'. Available: {available}"
 
-    # Get connection (with one retry on failure)
-    try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception as first_error:
-        # Connection failed - clear stale connection and retry once
-        logger.warning(
-            "Connection to %s failed: %s, retrying after cleanup",
-            ssh_host.name,
-            first_error,
-        )
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-            logger.info("Retry connection to %s succeeded", ssh_host.name)
-        except Exception as retry_error:
-            logger.error(
-                "Retry connection to %s failed: %s",
-                ssh_host.name,
-                retry_error,
-            )
-            return f"Error: Cannot connect to {ssh_host.name}: {retry_error}"
-
     # If query provided, run command
     if query:
-        try:
-            result = await run_command(
-                conn,
-                parsed.path,
-                query,
-                timeout=config.command_timeout,
-            )
-
-            output_parts = []
-            if result.output:
-                output_parts.append(result.output)
-            if result.error:
-                output_parts.append(f"[stderr]\n{result.error}")
-            if result.returncode != 0:
-                output_parts.append(f"[exit code: {result.returncode}]")
-
-            return "\n".join(output_parts) if output_parts else "(no output)"
-
-        except Exception as e:
-            return f"Error: Command failed: {e}"
+        return await handle_command_execution(ssh_host, parsed.path, query)
 
     # Determine if path is file or directory
-    try:
-        path_type = await stat_path(conn, parsed.path)
-    except Exception as e:
-        return f"Error: Cannot stat {parsed.path}: {e}"
+    path_type, error = await determine_path_type(ssh_host, parsed.path)
+    if error:
+        return f"Error: {error}"
 
-    if path_type is None:
-        return f"Error: Path not found: {parsed.path}"
-
-    # Cat file or list directory
-    try:
-        if path_type == "file":
-            contents, was_truncated = await cat_file(
-                conn, parsed.path, config.max_file_size
-            )
-            if was_truncated:
-                contents += f"\n\n[truncated at {config.max_file_size} bytes]"
-            return contents
-        else:
-            if tree:
-                listing = await tree_dir(conn, parsed.path)
-            else:
-                listing = await ls_dir(conn, parsed.path)
-            return listing
-
-    except Exception as e:
-        return f"Error: {e}"
+    # Handle file or directory
+    if path_type == "file":
+        return await handle_file_read(ssh_host, parsed.path)
+    else:
+        return await handle_directory_list(ssh_host, parsed.path, tree)

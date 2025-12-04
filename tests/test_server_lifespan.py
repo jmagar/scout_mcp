@@ -81,7 +81,7 @@ async def test_read_host_path_reads_file(mock_ssh_config: Path) -> None:
 
     with patch("scout_mcp.server.get_config", return_value=config), \
          patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_pool", return_value=mock_pool):
+         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
 
         result = await _read_host_path("tootie", "etc/hosts")
 
@@ -120,7 +120,7 @@ async def test_read_host_path_lists_directory(mock_ssh_config: Path) -> None:
 
     with patch("scout_mcp.server.get_config", return_value=config), \
          patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_pool", return_value=mock_pool):
+         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
 
         result = await _read_host_path("tootie", "etc")
 
@@ -176,7 +176,7 @@ async def test_dynamic_resource_integration(mock_ssh_config: Path) -> None:
 
     with patch("scout_mcp.server.get_config", return_value=config), \
          patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_pool", return_value=mock_pool):
+         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
 
         mcp = create_server()
 

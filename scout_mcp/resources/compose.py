@@ -2,7 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import compose_config, compose_logs, compose_ls
 
 
@@ -16,7 +16,6 @@ async def compose_list_resource(host: str) -> str:
         Formatted list of compose projects.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -26,15 +25,9 @@ async def compose_list_resource(host: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # List projects
     projects = await compose_ls(conn)
@@ -74,7 +67,6 @@ async def compose_file_resource(host: str, project: str) -> str:
         Compose file contents.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -84,15 +76,9 @@ async def compose_file_resource(host: str, project: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Get config
     content, config_path = await compose_config(conn, project)
@@ -121,7 +107,6 @@ async def compose_logs_resource(host: str, project: str) -> str:
         Stack logs with timestamps.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -131,15 +116,9 @@ async def compose_logs_resource(host: str, project: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Fetch logs
     logs, exists = await compose_logs(conn, project, tail=100, timestamps=True)

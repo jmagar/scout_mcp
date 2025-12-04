@@ -4,7 +4,11 @@ import logging
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.services import (
+    ConnectionError,
+    get_config,
+    get_connection_with_retry,
+)
 from scout_mcp.services.executors import cat_file, ls_dir, stat_path
 
 logger = logging.getLogger(__name__)
@@ -29,7 +33,6 @@ async def scout_resource(host: str, path: str) -> str:
         scout://dookie/home/user/.bashrc - Read user's bashrc
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -42,27 +45,9 @@ async def scout_resource(host: str, path: str) -> str:
 
     # Get connection (with one retry on failure)
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception as first_error:
-        # Connection failed - clear stale connection and retry once
-        logger.warning(
-            "Resource connection to %s failed: %s, retrying after cleanup",
-            host,
-            first_error,
-        )
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-            logger.info("Retry resource connection to %s succeeded", host)
-        except Exception as retry_error:
-            logger.error(
-                "Retry resource connection to %s failed: %s",
-                host,
-                retry_error,
-            )
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Determine if path is file or directory
     try:

@@ -2,7 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import docker_logs, docker_ps
 
 
@@ -20,7 +20,6 @@ async def docker_logs_resource(host: str, container: str) -> str:
         ResourceError: If host unknown, connection fails, or container not found.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -30,15 +29,9 @@ async def docker_logs_resource(host: str, container: str) -> str:
 
     # Get connection (with one retry on failure)
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Fetch logs
     try:
@@ -69,7 +62,6 @@ async def docker_list_resource(host: str) -> str:
         Formatted list of containers with status.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -79,15 +71,9 @@ async def docker_list_resource(host: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # List containers
     containers = await docker_ps(conn)

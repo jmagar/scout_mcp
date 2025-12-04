@@ -46,7 +46,7 @@ async def test_zfs_overview_resource_returns_pools(mock_ssh_config: Path) -> Non
     with patch(
         "scout_mcp.resources.zfs.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.zfs.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.zfs.zfs_check", return_value=True
     ), patch(
@@ -75,7 +75,7 @@ async def test_zfs_overview_resource_no_zfs(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.zfs.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.zfs.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.zfs.zfs_check", return_value=False
     ):
@@ -99,7 +99,7 @@ async def test_zfs_pool_resource_returns_status(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.zfs.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.zfs.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.zfs.zfs_check", return_value=True
     ), patch(
@@ -127,7 +127,7 @@ async def test_zfs_pool_resource_not_found(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.zfs.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.zfs.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.zfs.zfs_check", return_value=True
     ), patch(
@@ -160,7 +160,7 @@ async def test_zfs_snapshots_resource_returns_snapshots(mock_ssh_config: Path) -
     with patch(
         "scout_mcp.resources.zfs.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.zfs.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.zfs.zfs_check", return_value=True
     ), patch(

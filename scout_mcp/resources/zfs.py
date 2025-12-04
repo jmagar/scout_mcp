@@ -2,7 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import (
     zfs_check,
     zfs_datasets,
@@ -22,7 +22,6 @@ async def zfs_overview_resource(host: str) -> str:
         Formatted ZFS overview with pools and usage.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -32,15 +31,9 @@ async def zfs_overview_resource(host: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)
@@ -98,7 +91,6 @@ async def zfs_pool_resource(host: str, pool_name: str) -> str:
         Pool status output.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -108,15 +100,9 @@ async def zfs_pool_resource(host: str, pool_name: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)
@@ -152,7 +138,6 @@ async def zfs_datasets_resource(host: str, pool_name: str) -> str:
         Formatted dataset list.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -162,15 +147,9 @@ async def zfs_datasets_resource(host: str, pool_name: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)
@@ -220,7 +199,6 @@ async def zfs_snapshots_resource(host: str) -> str:
         Formatted snapshot list.
     """
     config = get_config()
-    pool = get_pool()
 
     # Validate host exists
     ssh_host = config.get_host(host)
@@ -230,15 +208,9 @@ async def zfs_snapshots_resource(host: str) -> str:
 
     # Get connection
     try:
-        conn = await pool.get_connection(ssh_host)
-    except Exception:
-        try:
-            await pool.remove_connection(ssh_host.name)
-            conn = await pool.get_connection(ssh_host)
-        except Exception as retry_error:
-            raise ResourceError(
-                f"Cannot connect to {host}: {retry_error}"
-            ) from retry_error
+        conn = await get_connection_with_retry(ssh_host)
+    except ConnectionError as e:
+        raise ResourceError(str(e)) from e
 
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)

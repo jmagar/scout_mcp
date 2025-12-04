@@ -48,7 +48,7 @@ async def test_compose_list_resource_returns_projects(mock_ssh_config: Path) -> 
     with patch(
         "scout_mcp.resources.compose.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.compose.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.compose.compose_ls",
         return_value=projects,
@@ -76,7 +76,7 @@ async def test_compose_file_resource_returns_config(mock_ssh_config: Path) -> No
     with patch(
         "scout_mcp.resources.compose.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.compose.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.compose.compose_config",
         return_value=(
@@ -105,7 +105,7 @@ async def test_compose_file_resource_project_not_found(mock_ssh_config: Path) ->
     with patch(
         "scout_mcp.resources.compose.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.compose.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.compose.compose_config",
         return_value=("", None),
@@ -127,7 +127,7 @@ async def test_compose_logs_resource_returns_logs(mock_ssh_config: Path) -> None
     with patch(
         "scout_mcp.resources.compose.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.compose.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.compose.compose_logs",
         return_value=("plex  | Starting server", True),

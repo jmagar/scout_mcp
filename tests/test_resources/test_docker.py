@@ -35,7 +35,7 @@ async def test_docker_logs_resource_returns_logs(mock_ssh_config: Path) -> None:
     with patch(
         "scout_mcp.resources.docker.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.docker.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.docker.docker_logs",
         return_value=("2024-01-01T00:00:00Z Test log line", True),
@@ -74,7 +74,7 @@ async def test_docker_logs_resource_container_not_found(mock_ssh_config: Path) -
     with patch(
         "scout_mcp.resources.docker.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.docker.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.docker.docker_logs",
         return_value=("", False),
@@ -101,7 +101,7 @@ async def test_docker_list_resource_returns_containers(mock_ssh_config: Path) ->
     with patch(
         "scout_mcp.resources.docker.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.docker.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.docker.docker_ps",
         return_value=containers,
@@ -129,7 +129,7 @@ async def test_docker_list_resource_no_containers(mock_ssh_config: Path) -> None
     with patch(
         "scout_mcp.resources.docker.get_config", return_value=config
     ), patch(
-        "scout_mcp.resources.docker.get_pool", return_value=mock_pool
+        "scout_mcp.services.state.get_pool", return_value=mock_pool
     ), patch(
         "scout_mcp.resources.docker.docker_ps",
         return_value=[],

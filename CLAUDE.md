@@ -199,6 +199,13 @@ pool = get_pool()      # Lazy singleton
 - Tools return error strings (never raise)
 - Resources raise `ResourceError`
 - Connection failures: auto-retry once with cleanup
+- Path traversal attempts raise `PathTraversalError`
+
+### Input Validation
+All user input is validated before use:
+- **Path validation**: Blocks `../`, null bytes, and other traversal attempts
+- **Host validation**: Blocks command injection characters (`;`, `|`, `$`, etc.)
+- **Shell quoting**: All paths and arguments are quoted with `shlex.quote()`
 
 ### Async-First
 All I/O is async. SSH operations use `asyncssh`, connection pool uses `asyncio.Lock`.
@@ -215,6 +222,7 @@ from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_pat
 
 # Utils
 from scout_mcp.utils import parse_target, check_host_online, get_mime_type
+from scout_mcp.utils.validation import validate_path, validate_host, PathTraversalError
 
 # Tools/Resources
 from scout_mcp.tools import scout
@@ -223,13 +231,17 @@ from scout_mcp.resources import scout_resource, list_hosts_resource
 
 ## Security Notes
 
-- No path traversal protection (relies on SSH server access controls)
-- File size limits prevent memory exhaustion
-- Command execution uses shell quoting via `repr()`
-- Assumes trusted MCP client (no auth on tool)
+- **Path traversal protection**: Validates all paths to block `../`, null bytes, and escapes
+- **Host validation**: Blocks command injection attempts in hostnames
+- **Shell quoting**: All paths and commands use `shlex.quote()` for safe shell execution
+- **File size limits**: Prevents memory exhaustion (default: 1MB)
+- **Command timeout**: Prevents hanging operations (default: 30s)
+- **Assumes trusted MCP client**: No authentication on tool endpoints
 
 ## Recent Changes
 
+- **Path traversal protection** with comprehensive validation (`validate_path`, `validate_host`)
+- **Security hardening** with null byte detection and malicious input blocking
 - **Comprehensive logging** for MCP client connections, SSH pool, and server lifecycle
 - `SCOUT_LOG_LEVEL` environment variable for configurable log levels
 - **Streamable HTTP transport by default** (was STDIO)
