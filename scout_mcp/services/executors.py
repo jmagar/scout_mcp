@@ -1,5 +1,6 @@
 """SSH command executors for file operations."""
 
+import shlex
 from typing import TYPE_CHECKING
 
 from scout_mcp.models import CommandResult
@@ -14,7 +15,7 @@ async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | No
     Returns:
         'file', 'directory', or None if path doesn't exist.
     """
-    result = await conn.run(f'stat -c "%F" {path!r} 2>/dev/null', check=False)
+    result = await conn.run(f'stat -c "%F" {shlex.quote(path)} 2>/dev/null', check=False)
 
     if result.returncode != 0:
         return None
@@ -50,7 +51,7 @@ async def cat_file(
     Raises:
         RuntimeError: If file cannot be read.
     """
-    result = await conn.run(f"head -c {max_size} {path!r}", check=False)
+    result = await conn.run(f"head -c {max_size} {shlex.quote(path)}", check=False)
 
     if result.returncode != 0:
         stderr = result.stderr
@@ -84,7 +85,7 @@ async def ls_dir(conn: "asyncssh.SSHClientConnection", path: str) -> str:
     Raises:
         RuntimeError: If directory cannot be listed.
     """
-    result = await conn.run(f"ls -la {path!r}", check=False)
+    result = await conn.run(f"ls -la {shlex.quote(path)}", check=False)
 
     if result.returncode != 0:
         stderr = result.stderr
@@ -121,7 +122,7 @@ async def tree_dir(
     """
     # Try tree command first
     result = await conn.run(
-        f"tree -L {max_depth} --noreport {path!r} 2>/dev/null", check=False
+        f"tree -L {max_depth} --noreport {shlex.quote(path)} 2>/dev/null", check=False
     )
 
     if result.returncode == 0:
@@ -134,7 +135,7 @@ async def tree_dir(
 
     # Fall back to find
     find_cmd = (
-        f"find {path!r} -maxdepth {max_depth} -type f -o -type d "
+        f"find {shlex.quote(path)} -maxdepth {max_depth} -type f -o -type d "
         f"2>/dev/null | head -100"
     )
     result = await conn.run(find_cmd, check=False)
@@ -158,7 +159,7 @@ async def run_command(
     Returns:
         CommandResult with stdout, stderr, and return code.
     """
-    full_command = f"cd {working_dir!r} && timeout {timeout} {command}"
+    full_command = f"cd {shlex.quote(working_dir)} && timeout {timeout} {command}"
 
     result = await conn.run(full_command, check=False)
 
@@ -211,7 +212,7 @@ async def docker_logs(
         RuntimeError: If Docker command fails unexpectedly.
     """
     ts_flag = "--timestamps" if timestamps else ""
-    cmd = f"docker logs --tail {tail} {ts_flag} {container!r} 2>&1"
+    cmd = f"docker logs --tail {tail} {ts_flag} {shlex.quote(container)} 2>&1"
 
     result = await conn.run(cmd, check=False)
 
@@ -278,7 +279,7 @@ async def docker_inspect(
     Returns:
         True if container exists, False otherwise.
     """
-    cmd = f"docker inspect --format '{{{{.Name}}}}' {container!r} 2>/dev/null"
+    cmd = f"docker inspect --format '{{{{.Name}}}}' {shlex.quote(container)} 2>/dev/null"
 
     result = await conn.run(cmd, check=False)
     return result.returncode == 0
@@ -365,7 +366,7 @@ async def compose_config(
             return ("", None)
 
         # Read the config file
-        read_result = await conn.run(f"cat {config_file!r}", check=False)
+        read_result = await conn.run(f"cat {shlex.quote(config_file)}", check=False)
 
         if read_result.returncode != 0:
             return ("", config_file)
@@ -400,7 +401,7 @@ async def compose_logs(
         Tuple of (logs content, project_exists boolean).
     """
     ts_flag = "--timestamps" if timestamps else ""
-    cmd = f"docker compose -p {project!r} logs --tail {tail} {ts_flag} 2>&1"
+    cmd = f"docker compose -p {shlex.quote(project)} logs --tail {tail} {ts_flag} 2>&1"
 
     result = await conn.run(cmd, check=False)
 
@@ -484,7 +485,7 @@ async def zfs_pool_status(
     Returns:
         Tuple of (status_output, pool_exists).
     """
-    cmd = f"zpool status {pool!r} 2>&1"
+    cmd = f"zpool status {shlex.quote(pool)} 2>&1"
     result = await conn.run(cmd, check=False)
 
     stdout = result.stdout
@@ -515,7 +516,7 @@ async def zfs_datasets(
         List of dicts with 'name', 'used', 'avail', 'refer', 'mountpoint' keys.
     """
     if pool:
-        cmd = f"zfs list -H -r -o name,used,avail,refer,mountpoint {pool!r} 2>/dev/null"
+        cmd = f"zfs list -H -r -o name,used,avail,refer,mountpoint {shlex.quote(pool)} 2>/dev/null"
     else:
         cmd = "zfs list -H -o name,used,avail,refer,mountpoint 2>/dev/null"
 
@@ -564,7 +565,7 @@ async def zfs_snapshots(
     if dataset:
         cmd = (
             f"zfs list -H -t snapshot -r -o name,used,creation "
-            f"{dataset!r} 2>/dev/null | tail -{limit}"
+            f"{shlex.quote(dataset)} 2>/dev/null | tail -{limit}"
         )
     else:
         cmd = (

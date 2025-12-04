@@ -82,8 +82,40 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_LOG_PAYLOADS` | false | Enable payload logging |
 | `SCOUT_SLOW_THRESHOLD_MS` | 1000 | Slow request threshold |
 | `SCOUT_INCLUDE_TRACEBACK` | false | Include tracebacks in error logs |
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to SSH known_hosts file |
+| `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown SSH host keys |
 
 Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
+
+### SSH Host Key Verification
+
+By default, scout_mcp verifies SSH host keys against `~/.ssh/known_hosts` to prevent man-in-the-middle (MITM) attacks.
+
+**Configuration:**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to known_hosts file |
+| `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown host keys |
+
+**Security Warning:** Setting `SCOUT_KNOWN_HOSTS=none` disables host key verification, making connections vulnerable to man-in-the-middle attacks. Only use this in trusted networks or for testing.
+
+**Behavior:**
+- **Default:** Uses `~/.ssh/known_hosts` if it exists, disables verification if not found
+- **Strict mode (default):** Connection fails if host key is unknown or mismatched
+- **Non-strict mode:** Warns but allows connection if host key verification fails
+
+**Example - Disable verification (NOT RECOMMENDED):**
+```bash
+export SCOUT_KNOWN_HOSTS=none
+uv run python -m scout_mcp
+```
+
+**Example - Allow unknown hosts with warning:**
+```bash
+export SCOUT_STRICT_HOST_KEY_CHECKING=false
+uv run python -m scout_mcp
+```
 
 ### Logging
 The server provides comprehensive logging for debugging and monitoring:

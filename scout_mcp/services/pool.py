@@ -18,12 +18,40 @@ logger = logging.getLogger(__name__)
 class ConnectionPool:
     """SSH connection pool with idle timeout."""
 
-    def __init__(self, idle_timeout: int = 60) -> None:
-        """Initialize pool with idle timeout in seconds."""
+    def __init__(
+        self,
+        idle_timeout: int = 60,
+        known_hosts: str | None = None,
+        strict_host_key_checking: bool = True,
+    ) -> None:
+        """Initialize pool with idle timeout in seconds.
+
+        Args:
+            idle_timeout: Seconds before idle connections are closed
+            known_hosts: Path to known_hosts file, or None to disable verification
+            strict_host_key_checking: Whether to reject unknown host keys
+        """
         self.idle_timeout = idle_timeout
         self._connections: dict[str, PooledConnection] = {}
         self._lock = asyncio.Lock()
         self._cleanup_task: asyncio.Task[Any] | None = None
+
+        # Cache known_hosts configuration
+        self._known_hosts = known_hosts
+        self._strict_host_key = strict_host_key_checking
+
+        if self._known_hosts is None:
+            logger.warning(
+                "SSH host key verification DISABLED - vulnerable to MITM attacks. "
+                "Set SCOUT_KNOWN_HOSTS to a valid known_hosts file path."
+            )
+        else:
+            logger.info(
+                "SSH host key verification enabled (known_hosts=%s, strict=%s)",
+                self._known_hosts,
+                self._strict_host_key,
+            )
+
         logger.debug(
             "ConnectionPool initialized (idle_timeout=%ds)",
             idle_timeout,
@@ -60,13 +88,45 @@ class ConnectionPool:
                 host.port,
             )
             client_keys = [host.identity_file] if host.identity_file else None
-            conn = await asyncssh.connect(
-                host.hostname,
-                port=host.port,
-                username=host.user,
-                known_hosts=None,
-                client_keys=client_keys,
+
+            # Determine known_hosts setting
+            known_hosts_arg = (
+                None if self._known_hosts is None else self._known_hosts
             )
+
+            try:
+                conn = await asyncssh.connect(
+                    host.hostname,
+                    port=host.port,
+                    username=host.user,
+                    known_hosts=known_hosts_arg,
+                    client_keys=client_keys,
+                )
+            except asyncssh.HostKeyNotVerifiable as e:
+                if self._strict_host_key:
+                    logger.error(
+                        "Host key verification failed for %s: %s. "
+                        "Add the host key to %s or set "
+                        "SCOUT_STRICT_HOST_KEY_CHECKING=false",
+                        host.name,
+                        e,
+                        self._known_hosts,
+                    )
+                    raise
+                else:
+                    logger.warning(
+                        "Host key not verified for %s (strict mode disabled): %s",
+                        host.name,
+                        e,
+                    )
+                    # Retry with verification disabled for this host
+                    conn = await asyncssh.connect(
+                        host.hostname,
+                        port=host.port,
+                        username=host.user,
+                        known_hosts=None,
+                        client_keys=client_keys,
+                    )
 
             self._connections[host.name] = PooledConnection(connection=conn)
             logger.info(

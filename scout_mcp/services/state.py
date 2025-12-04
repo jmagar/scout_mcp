@@ -21,7 +21,11 @@ def get_pool() -> ConnectionPool:
     global _pool
     if _pool is None:
         config = get_config()
-        _pool = ConnectionPool(idle_timeout=config.idle_timeout)
+        _pool = ConnectionPool(
+            idle_timeout=config.idle_timeout,
+            known_hosts=config.known_hosts_path,
+            strict_host_key_checking=config.strict_host_key_checking,
+        )
     return _pool
 
 

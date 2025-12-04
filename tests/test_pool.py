@@ -8,6 +8,12 @@ from scout_mcp.models import SSHHost
 from scout_mcp.services.pool import ConnectionPool
 
 
+@pytest.fixture(autouse=True)
+def mock_known_hosts(monkeypatch):
+    """Disable host key verification for all tests."""
+    monkeypatch.setenv("SCOUT_KNOWN_HOSTS", "none")
+
+
 @pytest.fixture
 def mock_ssh_host() -> SSHHost:
     """Create a mock SSH host."""
@@ -22,7 +28,7 @@ def mock_ssh_host() -> SSHHost:
 @pytest.mark.asyncio
 async def test_get_connection_creates_new_connection(mock_ssh_host: SSHHost) -> None:
     """First request creates a new SSH connection."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -45,7 +51,7 @@ async def test_get_connection_creates_new_connection(mock_ssh_host: SSHHost) -> 
 @pytest.mark.asyncio
 async def test_get_connection_reuses_existing(mock_ssh_host: SSHHost) -> None:
     """Subsequent requests reuse existing connection."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -63,7 +69,7 @@ async def test_get_connection_reuses_existing(mock_ssh_host: SSHHost) -> None:
 @pytest.mark.asyncio
 async def test_get_connection_replaces_closed(mock_ssh_host: SSHHost) -> None:
     """Closed connections are replaced with new ones."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn1 = AsyncMock()
     mock_conn1.is_closed = True
@@ -84,7 +90,7 @@ async def test_get_connection_replaces_closed(mock_ssh_host: SSHHost) -> None:
 @pytest.mark.asyncio
 async def test_close_all_connections(mock_ssh_host: SSHHost) -> None:
     """close_all closes all pooled connections."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -102,7 +108,7 @@ async def test_close_all_connections(mock_ssh_host: SSHHost) -> None:
 async def test_get_connection_uses_identity_file(mock_ssh_host: SSHHost) -> None:
     """Connection uses identity file when specified."""
     mock_ssh_host.identity_file = "~/.ssh/id_ed25519"
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -121,7 +127,7 @@ async def test_get_connection_uses_identity_file(mock_ssh_host: SSHHost) -> None
 @pytest.mark.asyncio
 async def test_remove_connection_existing(mock_ssh_host: SSHHost) -> None:
     """remove_connection removes connection from pool."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -140,7 +146,7 @@ async def test_remove_connection_existing(mock_ssh_host: SSHHost) -> None:
 @pytest.mark.asyncio
 async def test_remove_connection_nonexistent(mock_ssh_host: SSHHost) -> None:
     """remove_connection handles non-existent connection gracefully."""
-    pool = ConnectionPool(idle_timeout=60)
+    pool = ConnectionPool(idle_timeout=60, known_hosts=None)
 
     # Should not raise an error
     await pool.remove_connection("nonexistent_host")

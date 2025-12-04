@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.0.0",
-    "asyncssh>=2.14.0",
+    "asyncssh>=2.14.2,<3.0.0",
 ]
 
 [project.optional-dependencies]
@@ -54,3 +54,9 @@ data_file = ".cache/.coverage"
 
 [tool.coverage.report]
 show_missing = true
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.0",
+    "ruff>=0.14.7",
+]

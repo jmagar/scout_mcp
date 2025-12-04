@@ -1,6 +1,7 @@
 """Configuration management for Scout MCP."""
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
@@ -181,3 +182,37 @@ class Config:
         """Get a specific host by name."""
         hosts = self.get_hosts()
         return hosts.get(name)
+
+    @property
+    def known_hosts_path(self) -> str | None:
+        """Path to known_hosts file, or None to disable verification.
+
+        Environment: SCOUT_KNOWN_HOSTS
+        Default: ~/.ssh/known_hosts
+        Special value: "none" disables verification (NOT RECOMMENDED)
+
+        Returns:
+            Path to known_hosts file or None if disabled
+        """
+        value = os.getenv("SCOUT_KNOWN_HOSTS", "").strip()
+        if value.lower() == "none":
+            return None
+        if value:
+            return os.path.expanduser(value)
+        # Default to standard location
+        default = Path.home() / ".ssh" / "known_hosts"
+        if default.exists():
+            return str(default)
+        return None  # No known_hosts available
+
+    @property
+    def strict_host_key_checking(self) -> bool:
+        """Whether to reject unknown host keys.
+
+        Environment: SCOUT_STRICT_HOST_KEY_CHECKING
+        Default: True (reject unknown hosts)
+
+        Returns:
+            True if strict checking is enabled
+        """
+        return os.getenv("SCOUT_STRICT_HOST_KEY_CHECKING", "true").lower() != "false"
