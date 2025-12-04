@@ -4,7 +4,9 @@ This is a thin wrapper that wires together the MCP server with tools and resourc
 All business logic is delegated to the tools/, resources/, and services/ modules.
 """
 
+import logging
 import os
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -16,7 +18,6 @@ from starlette.responses import PlainTextResponse
 from scout_mcp.middleware import (
     ErrorHandlingMiddleware,
     LoggingMiddleware,
-    TimingMiddleware,
 )
 from scout_mcp.resources import (
     compose_file_resource,
@@ -32,8 +33,63 @@ from scout_mcp.resources import (
     zfs_pool_resource,
     zfs_snapshots_resource,
 )
-from scout_mcp.services import get_config
+from scout_mcp.services import get_config, get_pool
 from scout_mcp.tools import scout
+from scout_mcp.utils.console import MCPRequestFormatter
+
+
+def _configure_logging() -> None:
+    """Configure colorful logging for the scout_mcp package.
+
+    This is called at module load time to ensure logging is configured
+    before any loggers are used, regardless of how the server is started.
+    """
+    # Get configuration from environment
+    log_level = os.getenv("SCOUT_LOG_LEVEL", "DEBUG").upper()
+    use_colors = os.getenv("SCOUT_LOG_COLORS", "true").lower() != "false"
+
+    # Disable colors if not a TTY
+    if not sys.stderr.isatty():
+        use_colors = False
+
+    # Configure root logger for scout_mcp
+    scout_logger = logging.getLogger("scout_mcp")
+    scout_logger.setLevel(getattr(logging, log_level, logging.DEBUG))
+
+    # Only add handler if not already configured
+    if not scout_logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(MCPRequestFormatter(use_colors=use_colors))
+        scout_logger.addHandler(handler)
+        scout_logger.propagate = False
+
+    # Suppress noisy third-party loggers
+    for noisy_logger in [
+        "uvicorn",
+        "uvicorn.access",
+        "uvicorn.error",
+        "asyncssh",
+        "httpx",
+        "httpcore",
+        "fastmcp",
+        "starlette",
+        "anyio",
+    ]:
+        lg = logging.getLogger(noisy_logger)
+        lg.setLevel(logging.WARNING)
+        lg.handlers = []
+        lg.propagate = False
+
+    # Suppress root logger - this prevents uvicorn's default output
+    root_logger = logging.getLogger()
+    root_logger.handlers = []
+    root_logger.setLevel(logging.WARNING)
+
+
+# Configure logging at module load time
+_configure_logging()
+
+logger = logging.getLogger(__name__)
 
 
 async def _read_host_path(host: str, path: str) -> str:
@@ -127,8 +183,14 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     Yields:
         Dict with hosts list
     """
+    logger.info("Scout MCP server starting up")
     config = get_config()
     hosts = config.get_hosts()
+    logger.info(
+        "Loaded %d SSH host(s): %s",
+        len(hosts),
+        ", ".join(sorted(hosts.keys())) if hosts else "(none)",
+    )
 
     # Register Docker resources for each host (before filesystem wildcard)
     for host_name in hosts:
@@ -298,13 +360,34 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             mime_type="text/plain",
         )(make_handler(host_name))
 
-    yield {"hosts": list(hosts.keys())}
+    resource_count = len(hosts) * 9  # 9 resource types per host
+    logger.info(
+        "Registered %d dynamic resources for %d host(s)",
+        resource_count,
+        len(hosts),
+    )
+    logger.info("Scout MCP server ready to accept connections")
+
+    try:
+        yield {"hosts": list(hosts.keys())}
+    finally:
+        # Shutdown: close all SSH connections
+        logger.info("Scout MCP server shutting down")
+        pool = get_pool()
+        if pool.pool_size > 0:
+            logger.info(
+                "Closing %d active SSH connection(s): %s",
+                pool.pool_size,
+                ", ".join(pool.active_hosts),
+            )
+            await pool.close_all()
+        logger.info("Scout MCP server shutdown complete")
 
 
 def configure_middleware(server: FastMCP) -> None:
     """Configure middleware stack for the server.
 
-    Adds middleware in order: ErrorHandling -> Timing -> Logging
+    Adds middleware in order: ErrorHandling -> Logging (with integrated timing)
 
     Environment variables:
         SCOUT_LOG_PAYLOADS: Set to "true" to log request/response payloads
@@ -320,9 +403,14 @@ def configure_middleware(server: FastMCP) -> None:
     include_traceback = os.getenv("SCOUT_INCLUDE_TRACEBACK", "").lower() == "true"
 
     # Add middleware in order (first added = innermost)
+    # LoggingMiddleware now includes timing, so no separate TimingMiddleware needed
     server.add_middleware(ErrorHandlingMiddleware(include_traceback=include_traceback))
-    server.add_middleware(TimingMiddleware(slow_threshold_ms=slow_threshold))
-    server.add_middleware(LoggingMiddleware(include_payloads=log_payloads))
+    server.add_middleware(
+        LoggingMiddleware(
+            include_payloads=log_payloads,
+            slow_threshold_ms=slow_threshold,
+        )
+    )
 
 
 def create_server() -> FastMCP:
@@ -347,8 +435,10 @@ def create_server() -> FastMCP:
 
     # Add health check endpoint for HTTP transport
     @server.custom_route("/health", methods=["GET"])
-    async def health_check(_request: Request) -> PlainTextResponse:
+    async def health_check(request: Request) -> PlainTextResponse:
         """Health check endpoint."""
+        client_host = request.client.host if request.client else "unknown"
+        logger.debug("Health check from %s", client_host)
         return PlainTextResponse("OK")
 
     return server

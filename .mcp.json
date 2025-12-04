@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "scout": {
-      "url": "http://127.0.0.1:8000/mcp"
+      "type": "http",
+      "url": "http://10.2.0.33:8000/mcp"
     }
   }
 }

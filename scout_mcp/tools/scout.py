@@ -1,5 +1,7 @@
 """Scout tool for remote file operations via SSH."""
 
+import logging
+
 from scout_mcp.services import get_config, get_pool
 from scout_mcp.services.executors import (
     cat_file,
@@ -9,6 +11,9 @@ from scout_mcp.services.executors import (
     tree_dir,
 )
 from scout_mcp.utils.parser import parse_target
+from scout_mcp.utils.ping import check_hosts_online
+
+logger = logging.getLogger(__name__)
 
 
 async def scout(target: str, query: str | None = None, tree: bool = False) -> str:
@@ -45,9 +50,20 @@ async def scout(target: str, query: str | None = None, tree: bool = False) -> st
         if not hosts:
             return "No SSH hosts configured."
 
+        # Check online status for all hosts concurrently
+        host_endpoints = {
+            name: (host.hostname, host.port) for name, host in hosts.items()
+        }
+        online_status = await check_hosts_online(host_endpoints, timeout=2.0)
+
         lines = ["Available hosts:"]
         for name, host in sorted(hosts.items()):
-            lines.append(f"  {name} -> {host.user}@{host.hostname}:{host.port}")
+            status_icon = "✓" if online_status.get(name) else "✗"
+            status_text = "online" if online_status.get(name) else "offline"
+            lines.append(
+                f"  [{status_icon}] {name} ({status_text}) "
+                f"-> {host.user}@{host.hostname}:{host.port}"
+            )
         return "\n".join(lines)
 
     # Validate host
@@ -59,12 +75,23 @@ async def scout(target: str, query: str | None = None, tree: bool = False) -> st
     # Get connection (with one retry on failure)
     try:
         conn = await pool.get_connection(ssh_host)
-    except Exception:
+    except Exception as first_error:
         # Connection failed - clear stale connection and retry once
+        logger.warning(
+            "Connection to %s failed: %s, retrying after cleanup",
+            ssh_host.name,
+            first_error,
+        )
         try:
             await pool.remove_connection(ssh_host.name)
             conn = await pool.get_connection(ssh_host)
+            logger.info("Retry connection to %s succeeded", ssh_host.name)
         except Exception as retry_error:
+            logger.error(
+                "Retry connection to %s failed: %s",
+                ssh_host.name,
+                retry_error,
+            )
             return f"Error: Cannot connect to {ssh_host.name}: {retry_error}"
 
     # If query provided, run command

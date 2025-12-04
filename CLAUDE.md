@@ -78,11 +78,30 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
 | `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
 | `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
+| `SCOUT_LOG_LEVEL` | DEBUG | Log level (DEBUG, INFO, WARNING, ERROR) |
 | `SCOUT_LOG_PAYLOADS` | false | Enable payload logging |
 | `SCOUT_SLOW_THRESHOLD_MS` | 1000 | Slow request threshold |
 | `SCOUT_INCLUDE_TRACEBACK` | false | Include tracebacks in error logs |
 
 Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
+
+### Logging
+The server provides comprehensive logging for debugging and monitoring:
+
+```bash
+# Run with debug logging
+SCOUT_LOG_LEVEL=DEBUG uv run python -m scout_mcp
+
+# View connection pool events
+# Logs show: connection creation, reuse, cleanup, and failures
+```
+
+**Log events include:**
+- Server startup/shutdown with host counts
+- SSH connection creation and reuse
+- Connection pool cleanup (idle/stale)
+- Connection retry attempts
+- Request timing (via middleware)
 
 ### MCP Client Configuration (HTTP - Default)
 ```json
@@ -179,6 +198,8 @@ from scout_mcp.resources import scout_resource, list_hosts_resource
 
 ## Recent Changes
 
+- **Comprehensive logging** for MCP client connections, SSH pool, and server lifecycle
+- `SCOUT_LOG_LEVEL` environment variable for configurable log levels
 - **Streamable HTTP transport by default** (was STDIO)
 - Health check endpoint at `/health`
 - Transport configuration via environment variables

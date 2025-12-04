@@ -1,11 +1,14 @@
 """Configuration management for Scout MCP."""
 
+import logging
 import re
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from pathlib import Path
 
 from scout_mcp.models import SSHHost
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -73,19 +76,31 @@ class Config:
         if http_port is not None:
             self.http_port = http_port
 
+        logger.debug(
+            "Config initialized: transport=%s, max_file_size=%d, "
+            "command_timeout=%d, idle_timeout=%d",
+            self.transport,
+            self.max_file_size,
+            self.command_timeout,
+            self.idle_timeout,
+        )
+
     def _parse_ssh_config(self) -> None:
         """Parse SSH config file and populate hosts."""
         if self._parsed:
             return
 
         if not self.ssh_config_path.exists():
+            logger.warning("SSH config not found: %s", self.ssh_config_path)
             self._parsed = True
             return
 
         try:
             content = self.ssh_config_path.read_text()
-        except (OSError, PermissionError):
+            logger.debug("Reading SSH config from %s", self.ssh_config_path)
+        except (OSError, PermissionError) as e:
             # Treat unreadable config as empty
+            logger.warning("Cannot read SSH config %s: %s", self.ssh_config_path, e)
             self._parsed = True
             return
 
@@ -139,6 +154,7 @@ class Config:
             )
 
         self._parsed = True
+        logger.debug("Parsed %d SSH host(s) from config", len(self._hosts))
 
     def _is_host_allowed(self, name: str) -> bool:
         """Check if host passes allowlist/blocklist filters."""
