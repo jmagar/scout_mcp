@@ -23,6 +23,7 @@ def get_pool() -> ConnectionPool:
         config = get_config()
         _pool = ConnectionPool(
             idle_timeout=config.idle_timeout,
+            max_size=config.max_pool_size,
             known_hosts=config.known_hosts_path,
             strict_host_key_checking=config.strict_host_key_checking,
         )

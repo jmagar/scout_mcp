@@ -24,6 +24,7 @@ class Config:
     max_file_size: int = 1_048_576  # 1MB
     command_timeout: int = 30
     idle_timeout: int = 60
+    max_pool_size: int = 100  # Maximum concurrent SSH connections
     # Transport configuration
     transport: str = "http"  # "http" or "stdio"
     http_host: str = "0.0.0.0"
@@ -65,6 +66,17 @@ class Config:
         if val is not None:
             self.idle_timeout = val
 
+        val = get_env_int("SCOUT_MAX_POOL_SIZE", "")
+        if val is not None:
+            if val <= 0:
+                logger.warning(
+                    "SCOUT_MAX_POOL_SIZE must be > 0, got %d. Using default: %d",
+                    val,
+                    self.max_pool_size,
+                )
+            else:
+                self.max_pool_size = val
+
         # Transport configuration
         transport = os.getenv("SCOUT_TRANSPORT", "").lower()
         if transport in ("http", "stdio"):
@@ -79,11 +91,12 @@ class Config:
 
         logger.debug(
             "Config initialized: transport=%s, max_file_size=%d, "
-            "command_timeout=%d, idle_timeout=%d",
+            "command_timeout=%d, idle_timeout=%d, max_pool_size=%d",
             self.transport,
             self.max_file_size,
             self.command_timeout,
             self.idle_timeout,
+            self.max_pool_size,
         )
 
     def _parse_ssh_config(self) -> None:
