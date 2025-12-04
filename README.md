@@ -6,7 +6,7 @@ MCP server for remote file operations via SSH. Scout your fleet of machines with
 
 ```bash
 # Clone and install
-git clone <repo-url>
+git clone https://github.com/jmagar/scout_mcp
 cd scout_mcp
 uv sync
 ```
@@ -71,6 +71,60 @@ scout("hostname:/working/dir", "rg 'pattern' -t py")
 scout("hostname:~/code", "find . -name '*.md' -mtime -1")
 scout("hostname:/var/log", "tail -100 app.log | grep ERROR")
 ```
+
+## Security
+
+> **Warning**: Scout MCP provides remote shell access. Deploy with care.
+
+### Quick Security Checklist
+
+- [ ] Enable API key authentication (`SCOUT_API_KEYS`)
+- [ ] Enable rate limiting (`SCOUT_RATE_LIMIT_PER_MINUTE`)
+- [ ] Verify SSH host keys are in `~/.ssh/known_hosts`
+- [ ] Set `SCOUT_STRICT_HOST_KEY_CHECKING=true` (default)
+- [ ] Bind to `127.0.0.1` if local-only access needed
+- [ ] Use SSH keys, not passwords
+- [ ] Limit SSH user permissions on remote hosts
+- [ ] Review `~/.ssh/config` for only necessary hosts
+
+### Security Configuration
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_API_KEYS` | (none) | Comma-separated API keys for authentication |
+| `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Rate limit per client (requests/minute) |
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | SSH host key verification |
+| `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown host keys |
+| `SCOUT_HTTP_HOST` | 0.0.0.0 | Bind address (use 127.0.0.1 for local only) |
+| `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
+| `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
+
+### Built-in Security Features
+
+Scout MCP includes multiple layers of security protection:
+
+- **API Key Authentication**: Optional HTTP header-based authentication (production recommended)
+- **Rate Limiting**: Prevents abuse with configurable per-client request limits
+- **SSH Host Key Verification**: Validates remote host identity to prevent MITM attacks
+- **Path Traversal Protection**: Blocks `../` and other escape sequences
+- **Command Injection Protection**: Uses `shlex.quote()` for all paths and arguments
+- **Input Validation**: Validates hostnames and paths for malicious patterns
+- **File Size Limits**: Prevents memory exhaustion attacks
+- **Command Timeouts**: Prevents hanging operations
+
+### Example: Secure Configuration
+
+```bash
+# Production deployment (localhost only, strict security)
+export SCOUT_API_KEYS="$(openssl rand -hex 32)"  # Enable authentication
+export SCOUT_RATE_LIMIT_PER_MINUTE=60            # Rate limiting
+export SCOUT_HTTP_HOST="127.0.0.1"
+export SCOUT_STRICT_HOST_KEY_CHECKING=true
+export SCOUT_MAX_FILE_SIZE=5242880  # 5MB
+uv run python -m scout_mcp
+```
+
+See [SECURITY.md](SECURITY.md) for complete security documentation, threat model, and deployment best practices.
 
 ## Development
 

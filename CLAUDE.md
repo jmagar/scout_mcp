@@ -75,6 +75,8 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_TRANSPORT` | http | Transport protocol: "http" or "stdio" |
 | `SCOUT_HTTP_HOST` | 0.0.0.0 | HTTP server bind address |
 | `SCOUT_HTTP_PORT` | 8000 | HTTP server port |
+| `SCOUT_API_KEYS` | (none) | Comma-separated API keys for authentication |
+| `SCOUT_AUTH_ENABLED` | true | Enable/disable auth (if keys set) |
 | `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
 | `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
 | `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
@@ -84,6 +86,8 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_INCLUDE_TRACEBACK` | false | Include tracebacks in error logs |
 | `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to SSH known_hosts file |
 | `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown SSH host keys |
+| `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Max requests per minute per client |
+| `SCOUT_RATE_LIMIT_BURST` | 10 | Max burst size |
 
 Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
 
@@ -117,6 +121,34 @@ export SCOUT_STRICT_HOST_KEY_CHECKING=false
 uv run python -m scout_mcp
 ```
 
+### Rate Limiting
+
+Rate limiting protects the server from abuse by limiting the number of requests per client IP.
+
+**Configuration:**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Max requests per minute per client |
+| `SCOUT_RATE_LIMIT_BURST` | 10 | Max burst size (tokens) |
+
+**How it works:**
+- Uses token bucket algorithm per client IP
+- Each client gets a bucket that refills at the configured rate
+- Burst allows temporary spikes up to the configured limit
+- Health checks (`/health`) bypass rate limiting
+- Returns 429 status with `Retry-After` header when exceeded
+- Set `SCOUT_RATE_LIMIT_PER_MINUTE=0` to disable
+
+**Example:**
+```bash
+# Allow 120 requests/min with burst of 20
+SCOUT_RATE_LIMIT_PER_MINUTE=120 SCOUT_RATE_LIMIT_BURST=20 uv run python -m scout_mcp
+
+# Disable rate limiting
+SCOUT_RATE_LIMIT_PER_MINUTE=0 uv run python -m scout_mcp
+```
+
 ### Logging
 The server provides comprehensive logging for debugging and monitoring:
 
@@ -135,12 +167,50 @@ SCOUT_LOG_LEVEL=DEBUG uv run python -m scout_mcp
 - Connection retry attempts
 - Request timing (via middleware)
 
+### Authentication
+
+Set `SCOUT_API_KEYS` to enable API key authentication:
+
+```bash
+# Single key
+export SCOUT_API_KEYS="your-secret-key-here"
+
+# Multiple keys (comma-separated)
+export SCOUT_API_KEYS="key1,key2,key3"
+
+# Disable auth explicitly (when keys are set)
+export SCOUT_AUTH_ENABLED="false"
+```
+
+Clients must include the key in the `X-API-Key` header. The `/health` endpoint bypasses authentication.
+
+**Security features:**
+- Constant-time key comparison to prevent timing attacks
+- Multiple keys supported for rotation
+- Keys are never logged or exposed
+
 ### MCP Client Configuration (HTTP - Default)
+
+**Without authentication:**
 ```json
 {
   "mcpServers": {
     "scout_mcp": {
       "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+**With API key authentication:**
+```json
+{
+  "mcpServers": {
+    "scout_mcp": {
+      "url": "http://127.0.0.1:8000/mcp",
+      "headers": {
+        "X-API-Key": "your-secret-key-here"
+      }
     }
   }
 }

@@ -16,8 +16,10 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from scout_mcp.middleware import (
+    APIKeyMiddleware,
     ErrorHandlingMiddleware,
     LoggingMiddleware,
+    RateLimitMiddleware,
 )
 from scout_mcp.resources import (
     compose_file_resource,
@@ -440,6 +442,18 @@ def create_server() -> FastMCP:
         client_host = request.client.host if request.client else "unknown"
         logger.debug("Health check from %s", client_host)
         return PlainTextResponse("OK")
+
+    # Configure HTTP-level middleware for security
+    http_app = server.http_app()
+
+    # Add rate limiting middleware (always - disable via SCOUT_RATE_LIMIT_PER_MINUTE=0)
+    http_app.add_middleware(RateLimitMiddleware)
+    logger.info("Rate limiting middleware configured for HTTP transport")
+
+    # Add API key authentication if keys are set
+    if os.getenv("SCOUT_API_KEYS"):
+        http_app.add_middleware(APIKeyMiddleware)
+        logger.info("API key authentication middleware configured for HTTP transport")
 
     return server
 
