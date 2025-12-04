@@ -134,6 +134,73 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
         assert "TODO: fix this" in result
 
 
+@pytest.mark.asyncio
+async def test_scout_find_files(mock_ssh_config: Path) -> None:
+    """scout with find parameter searches for files."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(
+        stdout="/home/user/file1.py\n/home/user/subdir/file2.py", returncode=0
+    )
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        result = await scout("testhost:/home/user", find="*.py")
+
+        assert "file1.py" in result
+        assert "file2.py" in result
+        # Verify find command was called
+        call_args = mock_conn.run.call_args[0][0]
+        assert "find" in call_args
+        assert "*.py" in call_args
+
+
+@pytest.mark.asyncio
+async def test_scout_find_respects_depth(mock_ssh_config: Path) -> None:
+    """scout find respects depth parameter."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(stdout="", returncode=0)
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        await scout("testhost:/home/user", find="*.py", depth=2)
+
+        # Verify maxdepth parameter was passed
+        call_args = mock_conn.run.call_args[0][0]
+        assert "-maxdepth 2" in call_args
+
+
+@pytest.mark.asyncio
+async def test_scout_find_empty_results(mock_ssh_config: Path) -> None:
+    """scout find returns message when no files found."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(stdout="", returncode=0)
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        result = await scout("testhost:/home/user", find="*.nonexistent")
+
+        assert "No files matching" in result
+        assert "*.nonexistent" in result
+
+
 def test_hosts_resource_exists() -> None:
     """Verify hosts resource is registered."""
     from scout_mcp.server import mcp

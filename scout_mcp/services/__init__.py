@@ -5,7 +5,12 @@ from scout_mcp.services.connection import (
     get_connection_with_retry,
 )
 from scout_mcp.services.executors import (
+    broadcast_command,
+    broadcast_read,
     cat_file,
+    diff_files,
+    diff_with_content,
+    find_files,
     ls_dir,
     run_command,
     stat_path,
@@ -23,7 +28,12 @@ from scout_mcp.services.state import (
 __all__ = [
     "ConnectionError",
     "ConnectionPool",
+    "broadcast_command",
+    "broadcast_read",
     "cat_file",
+    "diff_files",
+    "diff_with_content",
+    "find_files",
     "get_config",
     "get_connection_with_retry",
     "get_pool",

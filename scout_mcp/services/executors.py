@@ -1,12 +1,16 @@
 """SSH command executors for file operations."""
 
+import asyncio
 import shlex
 from typing import TYPE_CHECKING
 
-from scout_mcp.models import CommandResult
+from scout_mcp.models import BroadcastResult, CommandResult
 
 if TYPE_CHECKING:
     import asyncssh
+
+    from scout_mcp.config import Config
+    from scout_mcp.services.pool import ConnectionPool
 
 
 async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | None:
@@ -15,7 +19,8 @@ async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | No
     Returns:
         'file', 'directory', or None if path doesn't exist.
     """
-    result = await conn.run(f'stat -c "%F" {shlex.quote(path)} 2>/dev/null', check=False)
+    cmd = f'stat -c "%F" {shlex.quote(path)} 2>/dev/null'
+    result = await conn.run(cmd, check=False)
 
     if result.returncode != 0:
         return None
@@ -279,7 +284,8 @@ async def docker_inspect(
     Returns:
         True if container exists, False otherwise.
     """
-    cmd = f"docker inspect --format '{{{{.Name}}}}' {shlex.quote(container)} 2>/dev/null"
+    quoted = shlex.quote(container)
+    cmd = f"docker inspect --format '{{{{.Name}}}}' {quoted} 2>/dev/null"
 
     result = await conn.run(cmd, check=False)
     return result.returncode == 0
@@ -516,7 +522,11 @@ async def zfs_datasets(
         List of dicts with 'name', 'used', 'avail', 'refer', 'mountpoint' keys.
     """
     if pool:
-        cmd = f"zfs list -H -r -o name,used,avail,refer,mountpoint {shlex.quote(pool)} 2>/dev/null"
+        quoted_pool = shlex.quote(pool)
+        cmd = (
+            f"zfs list -H -r -o name,used,avail,refer,mountpoint "
+            f"{quoted_pool} 2>/dev/null"
+        )
     else:
         cmd = "zfs list -H -o name,used,avail,refer,mountpoint 2>/dev/null"
 
@@ -641,3 +651,255 @@ async def syslog_read(
             return (stdout, "syslog")
 
     return ("", "none")
+
+
+async def find_files(
+    conn: "asyncssh.SSHClientConnection",
+    path: str,
+    pattern: str,
+    max_depth: int = 5,
+    file_type: str | None = None,
+    max_results: int = 100,
+) -> str:
+    """Find files matching pattern under path.
+
+    Args:
+        conn: SSH connection
+        path: Starting directory path
+        pattern: Glob pattern (e.g., "*.py", "config*")
+        max_depth: Maximum depth to search (default: 5)
+        file_type: Optional type filter ('f' for files, 'd' for dirs)
+        max_results: Maximum results to return (default: 100)
+
+    Returns:
+        Newline-separated list of matching paths, or error message.
+    """
+    # Build find command
+    type_flag = f"-type {shlex.quote(file_type)}" if file_type else ""
+    cmd = (
+        f"find {shlex.quote(path)} -maxdepth {max_depth} -name {shlex.quote(pattern)} "
+        f"{type_flag} 2>/dev/null | head -{max_results}"
+    )
+
+    result = await conn.run(cmd, check=False)
+
+    stdout = result.stdout
+    if stdout is None:
+        return ""
+    if isinstance(stdout, bytes):
+        return stdout.decode("utf-8", errors="replace").strip()
+    return stdout.strip()
+
+
+async def diff_files(
+    conn1: "asyncssh.SSHClientConnection",
+    path1: str,
+    conn2: "asyncssh.SSHClientConnection",
+    path2: str,
+    max_file_size: int = 1048576,
+    context_lines: int = 3,
+) -> tuple[str, bool]:
+    """Compare two files from potentially different hosts.
+
+    Args:
+        conn1: SSH connection for first file
+        path1: Path to first file
+        conn2: SSH connection for second file
+        path2: Path to second file
+        max_file_size: Maximum file size to read (default: 1MB)
+        context_lines: Number of context lines in diff output (default: 3)
+
+    Returns:
+        Tuple of (diff output, files_are_identical).
+        Empty diff output means files are identical.
+    """
+    import difflib
+
+    # Read both files
+    content1, _ = await cat_file(conn1, path1, max_file_size)
+    content2, _ = await cat_file(conn2, path2, max_file_size)
+
+    # Check if identical
+    if content1 == content2:
+        return ("", True)
+
+    # Generate unified diff
+    diff = difflib.unified_diff(
+        content1.splitlines(keepends=True),
+        content2.splitlines(keepends=True),
+        fromfile=path1,
+        tofile=path2,
+        n=context_lines,
+    )
+    diff_output = "".join(diff)
+
+    return (diff_output, False)
+
+
+async def diff_with_content(
+    conn: "asyncssh.SSHClientConnection",
+    path: str,
+    expected_content: str,
+    max_file_size: int = 1048576,
+    context_lines: int = 3,
+) -> tuple[str, bool]:
+    """Compare remote file with expected content.
+
+    Args:
+        conn: SSH connection
+        path: Remote file path
+        expected_content: Content to compare against
+        max_file_size: Maximum file size to read (default: 1MB)
+        context_lines: Number of context lines in diff output (default: 3)
+
+    Returns:
+        Tuple of (diff output, files_are_identical).
+    """
+    import difflib
+
+    # Read remote file
+    actual_content, _ = await cat_file(conn, path, max_file_size)
+
+    # Check if identical
+    if actual_content == expected_content:
+        return ("", True)
+
+    # Generate unified diff
+    diff = difflib.unified_diff(
+        expected_content.splitlines(keepends=True),
+        actual_content.splitlines(keepends=True),
+        fromfile="expected",
+        tofile=path,
+        n=context_lines,
+    )
+    diff_output = "".join(diff)
+
+    return (diff_output, False)
+
+
+async def broadcast_read(
+    pool: "ConnectionPool",
+    config: "Config",
+    targets: list[tuple[str, str]],
+    max_file_size: int,
+) -> list[BroadcastResult]:
+    """Read files/directories from multiple hosts concurrently.
+
+    Args:
+        pool: Connection pool
+        config: Scout config for host lookup
+        targets: List of (host_name, path) tuples
+        max_file_size: Maximum file size to read
+
+    Returns:
+        List of BroadcastResult, one per target.
+    """
+
+    async def read_single(host_name: str, path: str) -> BroadcastResult:
+        """Read from a single host."""
+        try:
+            ssh_host = config.get_host(host_name)
+            if ssh_host is None:
+                return BroadcastResult(
+                    host=host_name,
+                    path=path,
+                    output="",
+                    success=False,
+                    error=f"Unknown host: {host_name}",
+                )
+
+            conn = await pool.get_connection(ssh_host)
+            path_type = await stat_path(conn, path)
+
+            if path_type == "file":
+                content, _ = await cat_file(conn, path, max_file_size)
+                return BroadcastResult(
+                    host=host_name, path=path, output=content, success=True
+                )
+            elif path_type == "directory":
+                listing = await ls_dir(conn, path)
+                return BroadcastResult(
+                    host=host_name, path=path, output=listing, success=True
+                )
+            else:
+                return BroadcastResult(
+                    host=host_name,
+                    path=path,
+                    output="",
+                    success=False,
+                    error=f"Path not found: {path}",
+                )
+        except Exception as e:
+            return BroadcastResult(
+                host=host_name, path=path, output="", success=False, error=str(e)
+            )
+
+    tasks = [read_single(h, p) for h, p in targets]
+    results = await asyncio.gather(*tasks)
+    return list(results)
+
+
+async def broadcast_command(
+    pool: "ConnectionPool",
+    config: "Config",
+    targets: list[tuple[str, str]],
+    command: str,
+    timeout: int,
+) -> list[BroadcastResult]:
+    """Execute command on multiple hosts concurrently.
+
+    Args:
+        pool: Connection pool
+        config: Scout config for host lookup
+        targets: List of (host_name, path) tuples
+        command: Shell command to execute
+        timeout: Command timeout in seconds
+
+    Returns:
+        List of BroadcastResult, one per target.
+    """
+
+    async def execute_single(host_name: str, path: str) -> BroadcastResult:
+        """Execute command on a single host."""
+        try:
+            ssh_host = config.get_host(host_name)
+            if ssh_host is None:
+                return BroadcastResult(
+                    host=host_name,
+                    path=path,
+                    output="",
+                    success=False,
+                    error=f"Unknown host: {host_name}",
+                )
+
+            conn = await pool.get_connection(ssh_host)
+            result = await run_command(conn, path, command, timeout)
+
+            # Format output
+            output_parts = [result.output]
+            if result.error:
+                output_parts.append("\n---\nErrors:\n" + result.error)
+            if result.returncode != 0:
+                output_parts.append(f"\nExit code: {result.returncode}")
+
+            output = "".join(output_parts)
+            success = result.returncode == 0
+
+            error_msg = (
+                None if success else f"Command exited with code {result.returncode}"
+            )
+            return BroadcastResult(
+                host=host_name,
+                path=path,
+                output=output,
+                success=success,
+                error=error_msg,
+            )
+        except Exception as e:
+            return BroadcastResult(
+                host=host_name, path=path, output="", success=False, error=str(e)
+            )
+
+    tasks = [execute_single(h, p) for h, p in targets]
+    results = await asyncio.gather(*tasks)
+    return list(results)
