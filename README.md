@@ -20,6 +20,7 @@ Scout MCP reads your `~/.ssh/config` to discover available hosts. Optionally con
 export SCOUT_MAX_FILE_SIZE=5242880   # 5MB (default: 1MB)
 export SCOUT_COMMAND_TIMEOUT=60      # seconds (default: 30)
 export SCOUT_IDLE_TIMEOUT=120        # seconds (default: 60)
+export SCOUT_MAX_POOL_SIZE=200       # max connections (default: 100)
 
 # Legacy MCP_CAT_* prefix still supported for backward compatibility
 ```
@@ -28,6 +29,7 @@ export SCOUT_IDLE_TIMEOUT=120        # seconds (default: 60)
 - Max file size: 1MB (1,048,576 bytes)
 - Command timeout: 30 seconds
 - Idle timeout: 60 seconds
+- Max pool size: 100 connections
 
 ## Usage
 

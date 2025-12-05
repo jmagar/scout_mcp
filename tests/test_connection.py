@@ -1,6 +1,7 @@
 """Tests for connection retry helper."""
 
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -78,7 +79,9 @@ class TestGetConnectionWithRetry:
     ) -> None:
         """ConnectionError stores host name and original error."""
         original_error = Exception("Connection timeout")
-        mock_pool.get_connection = AsyncMock(side_effect=[original_error, original_error])
+        mock_pool.get_connection = AsyncMock(
+            side_effect=[original_error, original_error]
+        )
         mock_pool.remove_connection = AsyncMock()
 
         with pytest.raises(ConnectionError) as exc_info:

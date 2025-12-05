@@ -61,6 +61,7 @@ URI-based read-only access:
 
 ### Connection Pooling
 - One connection per host, reused across requests
+- LRU eviction when pool reaches capacity (default: 100 connections)
 - Automatic idle timeout cleanup (default: 60s)
 - One-retry pattern on connection failure
 
@@ -79,7 +80,8 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_AUTH_ENABLED` | true | Enable/disable auth (if keys set) |
 | `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
 | `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
-| `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout |
+| `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout (seconds) |
+| `SCOUT_MAX_POOL_SIZE` | 100 | Maximum concurrent SSH connections |
 | `SCOUT_LOG_LEVEL` | DEBUG | Log level (DEBUG, INFO, WARNING, ERROR) |
 | `SCOUT_LOG_PAYLOADS` | false | Enable payload logging |
 | `SCOUT_SLOW_THRESHOLD_MS` | 1000 | Slow request threshold |

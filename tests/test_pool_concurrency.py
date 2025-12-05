@@ -1,7 +1,7 @@
 """Concurrency tests for connection pool."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -53,7 +53,8 @@ class TestPoolConcurrency:
         elapsed = asyncio.get_event_loop().time() - start
 
         # Should be close to 0.1s (parallel), not 0.2s (serial)
-        assert elapsed < 0.15, f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        msg = f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        assert elapsed < 0.15, msg
         assert pool.pool_size == 2
 
     @pytest.mark.asyncio
@@ -74,7 +75,7 @@ class TestPoolConcurrency:
 
     @pytest.mark.asyncio
     async def test_concurrent_three_hosts(self, mock_asyncssh, pool):
-        """Concurrent connections to three different hosts should all run in parallel."""
+        """Three different hosts should all run in parallel."""
         host1 = SSHHost(name="host1", hostname="h1", user="u", port=22)
         host2 = SSHHost(name="host2", hostname="h2", user="u", port=22)
         host3 = SSHHost(name="host3", hostname="h3", user="u", port=22)
@@ -89,7 +90,8 @@ class TestPoolConcurrency:
         elapsed = asyncio.get_event_loop().time() - start
 
         # Should be close to 0.1s (parallel), not 0.3s (serial)
-        assert elapsed < 0.15, f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        msg = f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        assert elapsed < 0.15, msg
         assert pool.pool_size == 3
 
     @pytest.mark.asyncio
@@ -108,7 +110,8 @@ class TestPoolConcurrency:
         elapsed = asyncio.get_event_loop().time() - start
 
         # Should be close to 0.1s (parallel for different hosts)
-        assert elapsed < 0.15, f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        msg = f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        assert elapsed < 0.15, msg
         assert pool.pool_size == 2
         # Two requests to host1 should get same connection
         assert results[0] == results[1]
@@ -135,7 +138,8 @@ class TestPoolConcurrency:
 
         # Reuse should be instant, new connection takes ~0.1s
         # But they should run in parallel, so total ~0.1s not ~0.2s
-        assert elapsed < 0.15, f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        msg = f"Expected parallel execution (~0.1s), got {elapsed:.3f}s"
+        assert elapsed < 0.15, msg
         assert pool.pool_size == 2
         assert results[0] == conn1  # Reused connection
 

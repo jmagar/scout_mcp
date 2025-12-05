@@ -1,7 +1,7 @@
 """Scout target URI parsing."""
 
 from scout_mcp.models import ScoutTarget
-from scout_mcp.utils.validation import PathTraversalError, validate_host, validate_path
+from scout_mcp.utils.validation import validate_host, validate_path
 
 
 def parse_target(target: str) -> ScoutTarget:

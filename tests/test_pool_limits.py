@@ -77,7 +77,9 @@ class TestPoolSizeLimits:
             assert "host2" in small_pool.active_hosts
 
     @pytest.mark.asyncio
-    async def test_pool_never_exceeds_max_size(self, small_pool: ConnectionPool) -> None:
+    async def test_pool_never_exceeds_max_size(
+        self, small_pool: ConnectionPool
+    ) -> None:
         """Pool size never exceeds max_size."""
         hosts = [self.make_host(f"host{i}") for i in range(10)]
 
