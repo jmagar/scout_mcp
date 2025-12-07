@@ -23,7 +23,7 @@ Host tootie
 
 @pytest.mark.asyncio
 async def test_docker_logs_resource_returns_logs(mock_ssh_config: Path) -> None:
-    """docker_logs_resource returns formatted container logs."""
+    """docker_logs_resource returns UI with formatted container logs."""
     from scout_mcp.resources.docker import docker_logs_resource
 
     config = Config(ssh_config_path=mock_ssh_config)
@@ -42,8 +42,12 @@ async def test_docker_logs_resource_returns_logs(mock_ssh_config: Path) -> None:
     ):
         result = await docker_logs_resource("tootie", "plex")
 
-        assert "Container Logs: plex@tootie" in result
-        assert "Test log line" in result
+        # Should return UIResource dict
+        assert isinstance(result, dict)
+        assert result["type"] == "resource"
+        assert result["resource"]["mimeType"] == "text/html"
+        assert "ui://scout-logs/" in str(result["resource"]["uri"])
+        assert "Test log line" in result["resource"]["text"]
 
 
 @pytest.mark.asyncio

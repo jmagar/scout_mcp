@@ -114,7 +114,7 @@ async def test_compose_file_resource_project_not_found(mock_ssh_config: Path) ->
 
 @pytest.mark.asyncio
 async def test_compose_logs_resource_returns_logs(mock_ssh_config: Path) -> None:
-    """compose_logs_resource returns formatted logs."""
+    """compose_logs_resource returns UI with formatted logs."""
     from scout_mcp.resources.compose import compose_logs_resource
 
     config = Config(ssh_config_path=mock_ssh_config)
@@ -133,5 +133,9 @@ async def test_compose_logs_resource_returns_logs(mock_ssh_config: Path) -> None
     ):
         result = await compose_logs_resource("tootie", "plex")
 
-        assert "Compose Logs: plex@tootie" in result
-        assert "Starting server" in result
+        # Should return UIResource dict
+        assert isinstance(result, dict)
+        assert result["type"] == "resource"
+        assert result["resource"]["mimeType"] == "text/html"
+        assert "ui://scout-logs/" in str(result["resource"]["uri"])
+        assert "Starting server" in result["resource"]["text"]

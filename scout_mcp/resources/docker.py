@@ -1,20 +1,23 @@
 """Docker resource for reading container logs from remote hosts."""
 
+from typing import Any
+
 from fastmcp.exceptions import ResourceError
 
 from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import docker_logs, docker_ps
+from scout_mcp.ui import create_log_viewer_ui
 
 
-async def docker_logs_resource(host: str, container: str) -> str:
-    """Read Docker container logs from remote host.
+async def docker_logs_resource(host: str, container: str) -> dict[str, Any]:
+    """Read Docker container logs with interactive log viewer UI.
 
     Args:
         host: SSH host name from ~/.ssh/config
         container: Docker container name
 
     Returns:
-        Container log output with timestamps.
+        UIResource dict with log viewer interface
 
     Raises:
         ResourceError: If host unknown, connection fails, or container not found.
@@ -46,10 +49,14 @@ async def docker_logs_resource(host: str, container: str) -> str:
         )
 
     if not logs.strip():
-        return f"# Container: {container}@{host}\n\n(no logs available)"
+        logs = "(no logs available)"
 
-    header = f"# Container Logs: {container}@{host}\n\n"
-    return header + logs
+    # Return interactive log viewer UI instead of plain text
+    return await create_log_viewer_ui(
+        host,
+        f"/docker/{container}/logs",
+        logs
+    )
 
 
 async def docker_list_resource(host: str) -> str:

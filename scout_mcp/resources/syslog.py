@@ -1,13 +1,16 @@
 """Syslog resource for reading system logs from remote hosts."""
 
+from typing import Any
+
 from fastmcp.exceptions import ResourceError
 
 from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import syslog_read
+from scout_mcp.ui import create_log_viewer_ui
 
 
-async def syslog_resource(host: str, lines: int = 100) -> str:
-    """Show system logs from remote host.
+async def syslog_resource(host: str, lines: int = 100) -> dict[str, Any]:
+    """Show system logs with interactive log viewer UI.
 
     Dynamically detects whether to use journalctl (systemd) or
     /var/log/syslog based on what's available on the host.
@@ -17,7 +20,7 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
         lines: Number of log lines to retrieve (default 100)
 
     Returns:
-        Formatted system log output.
+        UIResource dict with log viewer interface
     """
     config = get_config()
 
@@ -37,20 +40,16 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
     logs, source = await syslog_read(conn, lines=lines)
 
     if source == "none":
-        return (
-            f"# System Logs: {host}\n\n"
+        logs = (
             "System logs are not available on this host.\n\n"
             "Neither journalctl nor /var/log/syslog is accessible."
         )
 
     source_desc = "journalctl" if source == "journalctl" else "/var/log/syslog"
 
-    lines_list = [
-        f"# System Logs: {host}",
-        "=" * 50,
-        f"Source: {source_desc} (last {lines} lines)",
-        "",
-        logs,
-    ]
-
-    return "\n".join(lines_list)
+    # Return interactive log viewer UI instead of plain text
+    return await create_log_viewer_ui(
+        host,
+        f"/var/log/syslog ({source_desc})",
+        logs
+    )

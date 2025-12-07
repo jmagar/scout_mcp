@@ -22,7 +22,7 @@ Host tootie
 
 @pytest.mark.asyncio
 async def test_syslog_resource_returns_logs(mock_ssh_config: Path) -> None:
-    """syslog_resource returns formatted log output."""
+    """syslog_resource returns UI with formatted log output."""
     from scout_mcp.resources.syslog import syslog_resource
 
     config = Config(ssh_config_path=mock_ssh_config)
@@ -46,15 +46,19 @@ async def test_syslog_resource_returns_logs(mock_ssh_config: Path) -> None:
     ):
         result = await syslog_resource("tootie")
 
-        assert "System Logs: tootie" in result
-        assert "journalctl" in result
-        assert "sshd" in result
-        assert "kernel" in result
+        # Should return UIResource dict
+        assert isinstance(result, dict)
+        assert result["type"] == "resource"
+        assert result["resource"]["mimeType"] == "text/html"
+        assert "ui://scout-logs/" in str(result["resource"]["uri"])
+        assert "journalctl" in str(result["resource"]["uri"])
+        assert "sshd" in result["resource"]["text"]
+        assert "kernel" in result["resource"]["text"]
 
 
 @pytest.mark.asyncio
 async def test_syslog_resource_no_logs_available(mock_ssh_config: Path) -> None:
-    """syslog_resource shows message when no logs available."""
+    """syslog_resource shows UI message when no logs available."""
     from scout_mcp.resources.syslog import syslog_resource
 
     config = Config(ssh_config_path=mock_ssh_config)
@@ -73,4 +77,7 @@ async def test_syslog_resource_no_logs_available(mock_ssh_config: Path) -> None:
     ):
         result = await syslog_resource("tootie")
 
-        assert "not available" in result.lower()
+        # Should return UIResource dict with error message
+        assert isinstance(result, dict)
+        assert result["type"] == "resource"
+        assert "not available" in result["resource"]["text"].lower()

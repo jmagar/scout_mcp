@@ -1,9 +1,12 @@
 """Docker Compose resource for reading compose configs and logs from remote hosts."""
 
+from typing import Any
+
 from fastmcp.exceptions import ResourceError
 
 from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
 from scout_mcp.services.executors import compose_config, compose_logs, compose_ls
+from scout_mcp.ui import create_log_viewer_ui
 
 
 async def compose_list_resource(host: str) -> str:
@@ -96,15 +99,15 @@ async def compose_file_resource(host: str, project: str) -> str:
     return header + content
 
 
-async def compose_logs_resource(host: str, project: str) -> str:
-    """Read Docker Compose stack logs.
+async def compose_logs_resource(host: str, project: str) -> dict[str, Any]:
+    """Read Docker Compose stack logs with interactive log viewer UI.
 
     Args:
         host: SSH host name from ~/.ssh/config
         project: Compose project name
 
     Returns:
-        Stack logs with timestamps.
+        UIResource dict with log viewer interface
     """
     config = get_config()
 
@@ -130,7 +133,11 @@ async def compose_logs_resource(host: str, project: str) -> str:
         )
 
     if not logs.strip():
-        return f"# Compose Logs: {project}@{host}\n\n(no logs available)"
+        logs = "(no logs available)"
 
-    header = f"# Compose Logs: {project}@{host}\n\n"
-    return header + logs
+    # Return interactive log viewer UI instead of plain text
+    return await create_log_viewer_ui(
+        host,
+        f"/compose/{project}/logs",
+        logs
+    )
