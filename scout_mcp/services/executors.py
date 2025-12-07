@@ -990,74 +990,68 @@ async def beam_transfer_remote_to_remote(
     source_path: str,
     target_path: str,
 ) -> TransferResult:
-    """Transfer file from one remote host to another via local relay.
+    """Transfer file between two remote hosts using SFTP streaming.
 
-    Downloads file from source to local temp directory, then uploads to target.
-    Cleans up temp file after transfer completes or fails.
+    Streams file data in chunks without using temp files on the MCP server.
+    This approach has constant memory usage and works for files of any size.
 
     Args:
         source_conn: SSH connection to source host
         target_conn: SSH connection to target host
-        source_path: Path to file on source host
-        target_path: Path to destination on target host
+        source_path: Path to source file on source host
+        target_path: Path to destination file on target host
 
     Returns:
-        TransferResult with success status, message, and bytes transferred.
-
-    Raises:
-        RuntimeError: If download or upload fails.
+        TransferResult with success status, message, and bytes transferred
     """
-    import tempfile
-
-    # Create temp file for relay
-    temp_file = None
+    CHUNK_SIZE = 64 * 1024  # 64KB chunks
+    bytes_transferred = 0
 
     try:
-        # Download from source to temp
-        with tempfile.NamedTemporaryFile(delete=False, prefix="scout_beam_") as tf:
-            temp_file = Path(tf.name)
+        # Open both SFTP clients
+        async with source_conn.start_sftp_client() as source_sftp, \
+                   target_conn.start_sftp_client() as target_sftp:
 
-        try:
-            async with source_conn.start_sftp_client() as source_sftp:
-                await source_sftp.get(source_path, str(temp_file))
-        except Exception as e:
-            return TransferResult(
-                success=False,
-                message=f"Download from source failed: {e}",
-                bytes_transferred=0,
-            )
-
-        # Verify download succeeded
-        if not temp_file.exists():
-            return TransferResult(
-                success=False,
-                message="Download completed but temp file not found",
-                bytes_transferred=0,
-            )
-
-        file_size = temp_file.stat().st_size
-
-        # Upload from temp to target
-        try:
-            async with target_conn.start_sftp_client() as target_sftp:
-                await target_sftp.put(str(temp_file), target_path)
-        except Exception as e:
-            return TransferResult(
-                success=False,
-                message=f"Upload to target failed: {e}",
-                bytes_transferred=0,
-            )
-
-        return TransferResult(
-            success=True,
-            message=f"Transferred {source_path} → {target_path} (via relay)",
-            bytes_transferred=file_size,
-        )
-
-    finally:
-        # Clean up temp file
-        if temp_file and temp_file.exists():
+            # Verify source file exists
             try:
-                temp_file.unlink()
-            except Exception:
-                pass  # Best effort cleanup
+                source_attrs = await source_sftp.stat(source_path)
+                total_size = source_attrs.size
+            except Exception as e:
+                return TransferResult(
+                    success=False,
+                    message=f"Source file not found or inaccessible: {e}",
+                    bytes_transferred=0,
+                )
+
+            # Open source file for reading
+            try:
+                async with source_sftp.open(source_path, 'rb') as src_file:
+                    # Open target file for writing
+                    async with target_sftp.open(target_path, 'wb') as dst_file:
+                        # Stream in chunks
+                        while True:
+                            chunk = await src_file.read(CHUNK_SIZE)
+                            if not chunk:
+                                break
+                            await dst_file.write(chunk)
+                            bytes_transferred += len(chunk)
+
+                return TransferResult(
+                    success=True,
+                    message=f"Streamed {source_path} → {target_path} (remote-to-remote)",
+                    bytes_transferred=bytes_transferred,
+                )
+
+            except Exception as e:
+                return TransferResult(
+                    success=False,
+                    message=f"Transfer failed: {e}",
+                    bytes_transferred=bytes_transferred,
+                )
+
+    except Exception as e:
+        return TransferResult(
+            success=False,
+            message=f"SFTP connection failed: {e}",
+            bytes_transferred=bytes_transferred,
+        )

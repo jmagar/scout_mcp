@@ -59,6 +59,27 @@ scout("squirts:/etc/hostname", beam="/tmp/hostname")   # Download file
 scout(beam_source="shart:/src/file.txt", beam_target="squirts:/dst/file.txt")
 ```
 
+### Transfer Implementation Details
+
+**Remote-to-remote transfers use SFTP streaming:**
+- Opens both source and target SFTP connections simultaneously
+- Streams file data in 64KB chunks
+- No temp files on MCP server (constant memory usage)
+- Works for files of any size
+- Automatic optimization when MCP server is source or target
+
+**Example:**
+```python
+# Both hosts are remote - streams between them
+scout(beam_source="shart:/data/large.db", beam_target="squirts:/backup/large.db")
+
+# MCP server is on shart - optimized to direct upload
+scout(beam_source="shart:/local/file.txt", beam_target="squirts:/remote/file.txt")
+
+# MCP server is on squirts - optimized to direct download
+scout(beam_source="shart:/remote/file.txt", beam_target="squirts:/local/file.txt")
+```
+
 ### Resources
 URI-based read-only access:
 - `scout://{host}/{path}` - Read files or list directories

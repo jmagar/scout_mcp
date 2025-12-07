@@ -37,6 +37,22 @@ async def test_remote_to_remote_full_flow(tmp_path):
         source_conn.start_sftp_client.return_value.__aenter__.return_value = source_sftp
         target_conn.start_sftp_client.return_value.__aenter__.return_value = target_sftp
 
+        # Mock SFTP file handles for streaming
+        source_file = AsyncMock()
+        target_file = AsyncMock()
+
+        # Mock file attributes
+        mock_attrs = AsyncMock()
+        mock_attrs.size = 1024
+        source_sftp.stat.return_value = mock_attrs
+
+        # Simulate streaming
+        chunk_data = b"test file contents"
+        source_file.read.side_effect = [chunk_data, b""]
+
+        source_sftp.open.return_value.__aenter__.return_value = source_file
+        target_sftp.open.return_value.__aenter__.return_value = target_file
+
         # Execute transfer
         result = await scout(
             beam_source="remote1:/src/file.txt",
@@ -44,11 +60,13 @@ async def test_remote_to_remote_full_flow(tmp_path):
         )
 
         # Verify success
-        assert "✓" in result or "Transferred" in result
+        assert "✓" in result or "Streamed" in result
 
-        # Verify SFTP operations were called
-        source_sftp.get.assert_called_once()
-        target_sftp.put.assert_called_once()
+        # Verify streaming operations
+        source_sftp.stat.assert_called_once()
+        source_sftp.open.assert_called_once_with("/src/file.txt", 'rb')
+        target_sftp.open.assert_called_once_with("/dst/file.txt", 'wb')
+        target_file.write.assert_called_with(chunk_data)
 
 
 @pytest.mark.asyncio

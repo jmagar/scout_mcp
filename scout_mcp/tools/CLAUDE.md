@@ -62,6 +62,18 @@ scout(beam_source="shart:/local/file.txt", beam_target="squirts:/remote/file.txt
 scout(beam_source="shart:/remote/file.txt", beam_target="squirts:/local/file.txt")
 ```
 
+### Transfer Methods
+
+**Local ↔ Remote (beam parameter):**
+- Uses `sftp.get()` or `sftp.put()` depending on direction
+- Automatically detects direction based on local file existence
+
+**Remote ↔ Remote (beam_source/beam_target):**
+- Uses SFTP streaming with `sftp.open()` for reading and writing
+- Streams in 64KB chunks without temp files
+- Constant memory usage regardless of file size
+- Optimizes to local → remote or remote → local when MCP server is an endpoint
+
 ### Error Handling
 
 - **Invalid target**: Returns error message (no exception)
