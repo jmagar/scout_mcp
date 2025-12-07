@@ -222,7 +222,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             uri=f"{host_name}://docker/{{container}}/logs",
             name=f"{host_name} docker logs",
             description=f"Read Docker container logs on {host_name}",
-            mime_type="text/plain",
+            mime_type="text/html",
         )(make_docker_logs_handler(host_name))
 
         # Docker list: tootie://docker
@@ -275,7 +275,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             uri=f"{host_name}://compose/{{project}}/logs",
             name=f"{host_name} compose logs",
             description=f"Read Docker Compose stack logs on {host_name}",
-            mime_type="text/plain",
+            mime_type="text/html",
         )(make_compose_logs_handler(host_name))
 
     # Register ZFS resources for each host
@@ -351,7 +351,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             uri=f"{host_name}://syslog",
             name=f"{host_name} system logs",
             description=f"System logs on {host_name}",
-            mime_type="text/plain",
+            mime_type="text/html",
         )(make_syslog_handler(host_name))
 
     # Register filesystem wildcard LAST (after specific patterns)
