@@ -67,6 +67,7 @@ async def scout(
     diff: str | None = None,
     diff_content: str | None = None,
     targets: list[str] | None = None,
+    beam: str | None = None,
 ) -> str:
     """Scout remote files and directories via SSH.
 
@@ -82,6 +83,9 @@ async def scout(
         depth: Maximum depth for find operations (default: 5).
         diff: Another target to compare against (e.g., "host2:/path").
         diff_content: Expected content to compare file against.
+        beam: Local path for file transfer via SFTP.
+              If local file exists → upload to remote target.
+              If local file doesn't exist → download from remote target.
 
     Examples:
         scout("hosts") - List available SSH hosts
@@ -95,10 +99,11 @@ async def scout(
         scout("host:/etc/hosts", diff_content="expected content") - Compare
         scout(targets=["web1:/var/log/app.log", "web2:/var/log/app.log"]) - Broadcast
         scout(targets=["host1:/etc", "host2:/etc"], query="ls -la") - Broadcast cmd
+        scout("shart:/tmp/remote.txt", beam="/tmp/local.txt") - Upload or download
 
     Returns:
         File contents, directory listing, command output, search results,
-        diff output, host list, or formatted multi-host results.
+        diff output, host list, transfer result, or formatted multi-host results.
     """
     config = get_config()
     pool = get_pool()
@@ -140,6 +145,12 @@ async def scout(
 
     # Handle hosts command
     if parsed.is_hosts_command:
+        # Beam requires a valid target, not 'hosts'
+        if beam:
+            return (
+                "Error: beam parameter requires a valid host:/path target, "
+                "not 'hosts'"
+            )
         return await handle_hosts_list()
 
     # Validate host exists
@@ -147,6 +158,12 @@ async def scout(
     if ssh_host is None:
         available = ", ".join(sorted(config.get_hosts().keys()))
         return f"Error: Unknown host '{parsed.host}'. Available: {available}"
+
+    # Handle beam (file transfer) command
+    if beam:
+        from scout_mcp.tools.handlers import handle_beam_transfer
+
+        return await handle_beam_transfer(ssh_host, parsed.path, beam)
 
     # If find pattern provided, search for files
     if find:

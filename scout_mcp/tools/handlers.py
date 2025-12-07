@@ -1,6 +1,7 @@
 """Scout tool handlers for different operations."""
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from scout_mcp.services import (
@@ -9,6 +10,7 @@ from scout_mcp.services import (
     get_connection_with_retry,
 )
 from scout_mcp.services.executors import (
+    beam_transfer,
     cat_file,
     ls_dir,
     run_command,
@@ -208,3 +210,46 @@ async def determine_path_type(
         return path_type, None
     except Exception as e:
         return None, f"Cannot stat {path}: {e}"
+
+
+async def handle_beam_transfer(
+    ssh_host: "SSHHost",
+    remote_path: str,
+    beam_path: str,
+) -> str:
+    """Handle file transfer (beam) operation.
+
+    Args:
+        ssh_host: Target SSH host
+        remote_path: Remote file/directory path
+        beam_path: Local file/directory path
+
+    Returns:
+        Status message describing the transfer result
+    """
+    # Determine transfer direction
+    local_path = Path(beam_path)
+
+    if local_path.exists():
+        # Local file exists → Upload (local → remote)
+        direction = "upload"
+        source = beam_path
+        destination = remote_path
+    else:
+        # Local file doesn't exist → Download (remote → local)
+        direction = "download"
+        source = remote_path
+        destination = beam_path
+
+    try:
+        conn = await get_connection_with_retry(ssh_host)
+        result = await beam_transfer(conn, source, destination, direction)
+
+        if result.success:
+            size_kb = result.bytes_transferred / 1024
+            return f"✓ {result.message}\n  Size: {size_kb:.2f} KB"
+        else:
+            return f"✗ Transfer failed: {result.message}"
+
+    except Exception as e:
+        return f"Error: Beam transfer failed: {e}"
