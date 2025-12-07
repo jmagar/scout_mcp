@@ -151,6 +151,24 @@ Direction is auto-detected:
 - Local file exists → Upload (local → remote)
 - Local file doesn't exist → Download (remote → local)
 
+### Remote-to-Remote Transfers
+
+Transfer files directly between two remote hosts using SFTP streaming:
+
+```python
+# Transfer between two remote hosts
+mcp__scout__scout(
+    beam_source="shart:/mnt/data/backup.tar.gz",
+    beam_target="squirts:/backups/backup.tar.gz"
+)
+```
+
+**Features:**
+- Streams data in 64KB chunks (constant memory usage)
+- No temp files on MCP server
+- Works for files of any size
+- Auto-optimizes when MCP server is source or target
+
 ## Security
 
 > **Warning**: Scout MCP provides remote shell access. Deploy with care.
