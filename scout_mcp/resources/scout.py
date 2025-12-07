@@ -1,7 +1,7 @@
 """Scout resource for reading remote files and directories."""
 
 import logging
-from typing import Any, Union
+from typing import Any
 
 from fastmcp.exceptions import ResourceError
 
@@ -79,7 +79,7 @@ def _get_mime_type(path: str) -> str:
     return 'text/plain'
 
 
-async def scout_resource(host: str, path: str) -> Union[str, dict[str, Any]]:
+async def scout_resource(host: str, path: str) -> str | dict[str, Any]:
     """Read remote files or directories via SSH with UI support.
 
     This resource provides read-only access to remote filesystems.

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from mcp_ui_server import create_ui_resource  # noqa: F401
+from mcp_ui_server import create_ui_resource  # type: ignore[import-untyped]
 
 
 async def create_directory_ui(
@@ -28,7 +28,7 @@ async def create_directory_ui(
         "encoding": "text",
     })
 
-    return ui_resource.model_dump()
+    return ui_resource.model_dump()  # type: ignore[no-any-return]
 
 
 async def create_file_viewer_ui(
@@ -55,7 +55,7 @@ async def create_file_viewer_ui(
         "encoding": "text",
     })
 
-    return ui_resource.model_dump()
+    return ui_resource.model_dump()  # type: ignore[no-any-return]
 
 
 async def create_log_viewer_ui(
@@ -81,7 +81,7 @@ async def create_log_viewer_ui(
         "encoding": "text",
     })
 
-    return ui_resource.model_dump()
+    return ui_resource.model_dump()  # type: ignore[no-any-return]
 
 
 async def create_markdown_viewer_ui(
@@ -107,4 +107,4 @@ async def create_markdown_viewer_ui(
         "encoding": "text",
     })
 
-    return ui_resource.model_dump()
+    return ui_resource.model_dump()  # type: ignore[no-any-return]
