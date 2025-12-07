@@ -1,7 +1,9 @@
 """Scout tool for remote file operations via SSH."""
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from mcp_ui_server import create_ui_resource
 
 from scout_mcp.services import (
     broadcast_command,
@@ -20,6 +22,7 @@ from scout_mcp.tools.handlers import (
     handle_file_read,
     handle_hosts_list,
 )
+from scout_mcp.ui import create_directory_ui, create_file_viewer_ui
 from scout_mcp.utils.parser import parse_target
 
 if TYPE_CHECKING:
@@ -70,7 +73,7 @@ async def scout(
     beam: str | None = None,
     beam_source: str | None = None,
     beam_target: str | None = None,
-) -> str:
+) -> list[dict[str, Any]] | str:
     """Scout remote files and directories via SSH.
 
     Args:
@@ -107,8 +110,8 @@ async def scout(
         scout(beam_source="shart:/tmp/file.txt", beam_target="squirts:/tmp/file.txt") - Remote-to-remote
 
     Returns:
-        File contents, directory listing, command output, search results,
-        diff output, host list, transfer result, or formatted multi-host results.
+        UIResource list with interactive UI for files/directories, or
+        plain string for commands, diffs, searches, and other operations.
     """
     config = get_config()
     pool = get_pool()
@@ -267,8 +270,33 @@ async def scout(
     if error:
         return f"Error: {error}"
 
-    # Handle file or directory
+    # Handle file or directory with interactive UI
     if path_type == "file":
-        return await handle_file_read(ssh_host, parsed.path)
+        content = await handle_file_read(ssh_host, parsed.path)
+        # Return interactive file viewer UI
+        html = await create_file_viewer_ui(
+            parsed.host,  # type: ignore[arg-type]
+            parsed.path,
+            content,
+            mime_type="text/plain"
+        )
+        ui_resource = create_ui_resource({
+            "uri": f"ui://scout/{parsed.host}/{parsed.path}",
+            "content": {"type": "rawHtml", "htmlString": html},
+            "encoding": "text"
+        })
+        return [ui_resource]
     else:
-        return await handle_directory_list(ssh_host, parsed.path, tree)
+        # Return interactive directory explorer UI
+        listing = await handle_directory_list(ssh_host, parsed.path, tree)
+        html = await create_directory_ui(
+            parsed.host,  # type: ignore[arg-type]
+            parsed.path,
+            listing
+        )
+        ui_resource = create_ui_resource({
+            "uri": f"ui://scout/{parsed.host}/{parsed.path}",
+            "content": {"type": "rawHtml", "htmlString": html},
+            "encoding": "text"
+        })
+        return [ui_resource]
