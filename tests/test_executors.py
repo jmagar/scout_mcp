@@ -622,3 +622,109 @@ async def test_beam_transfer_invalid_direction(mock_connection: AsyncMock) -> No
             destination="/tmp/dest",
             direction="invalid",
         )
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_remote_to_remote_success(tmp_path):
+    """Test successful remote-to-remote transfer via relay."""
+    from pathlib import Path
+    from unittest.mock import patch
+    from scout_mcp.services.executors import beam_transfer_remote_to_remote, TransferResult
+
+    # Mock connections
+    source_conn = AsyncMock()
+    target_conn = AsyncMock()
+
+    # Mock SFTP clients
+    source_sftp = AsyncMock()
+    target_sftp = AsyncMock()
+
+    source_conn.start_sftp_client.return_value.__aenter__.return_value = source_sftp
+    target_conn.start_sftp_client.return_value.__aenter__.return_value = target_sftp
+
+    # Mock file download/upload
+    test_content = b"test file content"
+    source_sftp.get.return_value = None  # Download succeeds
+    target_sftp.put.return_value = None  # Upload succeeds
+
+    with patch("scout_mcp.services.executors.Path") as mock_path:
+        mock_temp_file = MagicMock()
+        mock_temp_file.exists.return_value = True
+        mock_temp_file.stat.return_value.st_size = len(test_content)
+        mock_path.return_value = mock_temp_file
+
+        result = await beam_transfer_remote_to_remote(
+            source_conn=source_conn,
+            target_conn=target_conn,
+            source_path="/remote1/file.txt",
+            target_path="/remote2/file.txt",
+        )
+
+    assert result.success is True
+    assert "Transferred" in result.message
+    assert result.bytes_transferred == len(test_content)
+
+    # Verify download was called
+    source_sftp.get.assert_called_once()
+
+    # Verify upload was called
+    target_sftp.put.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_remote_to_remote_download_fails():
+    """Test remote-to-remote transfer when download fails."""
+    from scout_mcp.services.executors import beam_transfer_remote_to_remote
+
+    source_conn = AsyncMock()
+    target_conn = AsyncMock()
+
+    source_sftp = AsyncMock()
+    source_sftp.get.side_effect = Exception("Download failed")
+
+    source_conn.start_sftp_client.return_value.__aenter__.return_value = source_sftp
+
+    result = await beam_transfer_remote_to_remote(
+        source_conn=source_conn,
+        target_conn=target_conn,
+        source_path="/remote1/file.txt",
+        target_path="/remote2/file.txt",
+    )
+
+    assert result.success is False
+    assert "Download failed" in result.message
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_remote_to_remote_upload_fails(tmp_path):
+    """Test remote-to-remote transfer when upload fails."""
+    from pathlib import Path
+    from unittest.mock import patch
+    from scout_mcp.services.executors import beam_transfer_remote_to_remote
+
+    source_conn = AsyncMock()
+    target_conn = AsyncMock()
+
+    source_sftp = AsyncMock()
+    target_sftp = AsyncMock()
+
+    source_sftp.get.return_value = None  # Download succeeds
+    target_sftp.put.side_effect = Exception("Upload failed")
+
+    source_conn.start_sftp_client.return_value.__aenter__.return_value = source_sftp
+    target_conn.start_sftp_client.return_value.__aenter__.return_value = target_sftp
+
+    with patch("scout_mcp.services.executors.Path") as mock_path:
+        mock_temp_file = MagicMock()
+        mock_temp_file.exists.return_value = True
+        mock_path.return_value = mock_temp_file
+
+        result = await beam_transfer_remote_to_remote(
+            source_conn=source_conn,
+            target_conn=target_conn,
+            source_path="/remote1/file.txt",
+            target_path="/remote2/file.txt",
+        )
+
+    assert result.success is False
+    assert "Upload failed" in result.message

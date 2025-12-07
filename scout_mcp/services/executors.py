@@ -982,3 +982,82 @@ async def beam_transfer(
             message=f"Transfer failed: {e}",
             bytes_transferred=0,
         )
+
+
+async def beam_transfer_remote_to_remote(
+    source_conn: "asyncssh.SSHClientConnection",
+    target_conn: "asyncssh.SSHClientConnection",
+    source_path: str,
+    target_path: str,
+) -> TransferResult:
+    """Transfer file from one remote host to another via local relay.
+
+    Downloads file from source to local temp directory, then uploads to target.
+    Cleans up temp file after transfer completes or fails.
+
+    Args:
+        source_conn: SSH connection to source host
+        target_conn: SSH connection to target host
+        source_path: Path to file on source host
+        target_path: Path to destination on target host
+
+    Returns:
+        TransferResult with success status, message, and bytes transferred.
+
+    Raises:
+        RuntimeError: If download or upload fails.
+    """
+    import tempfile
+
+    # Create temp file for relay
+    temp_file = None
+
+    try:
+        # Download from source to temp
+        with tempfile.NamedTemporaryFile(delete=False, prefix="scout_beam_") as tf:
+            temp_file = Path(tf.name)
+
+        try:
+            async with source_conn.start_sftp_client() as source_sftp:
+                await source_sftp.get(source_path, str(temp_file))
+        except Exception as e:
+            return TransferResult(
+                success=False,
+                message=f"Download from source failed: {e}",
+                bytes_transferred=0,
+            )
+
+        # Verify download succeeded
+        if not temp_file.exists():
+            return TransferResult(
+                success=False,
+                message="Download completed but temp file not found",
+                bytes_transferred=0,
+            )
+
+        file_size = temp_file.stat().st_size
+
+        # Upload from temp to target
+        try:
+            async with target_conn.start_sftp_client() as target_sftp:
+                await target_sftp.put(str(temp_file), target_path)
+        except Exception as e:
+            return TransferResult(
+                success=False,
+                message=f"Upload to target failed: {e}",
+                bytes_transferred=0,
+            )
+
+        return TransferResult(
+            success=True,
+            message=f"Transferred {source_path} → {target_path} (via relay)",
+            bytes_transferred=file_size,
+        )
+
+    finally:
+        # Clean up temp file
+        if temp_file and temp_file.exists():
+            try:
+                temp_file.unlink()
+            except Exception:
+                pass  # Best effort cleanup
