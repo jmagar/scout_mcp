@@ -9,7 +9,7 @@ import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Union
 
 from fastmcp import FastMCP
 from starlette.requests import Request
@@ -94,7 +94,7 @@ _configure_logging()
 logger = logging.getLogger(__name__)
 
 
-async def _read_host_path(host: str, path: str) -> str:
+async def _read_host_path(host: str, path: str) -> Union[str, dict[str, Any]]:
     """Read a file or directory on a remote host.
 
     Args:
@@ -102,12 +102,12 @@ async def _read_host_path(host: str, path: str) -> str:
         path: Remote path to read
 
     Returns:
-        File contents or directory listing
+        UIResource dict or plain text string
     """
     return await scout_resource(host, path)
 
 
-async def _read_docker_logs(host: str, container: str) -> str:
+async def _read_docker_logs(host: str, container: str) -> dict[str, Any]:
     """Read Docker container logs on a remote host.
 
     Args:
@@ -115,7 +115,7 @@ async def _read_docker_logs(host: str, container: str) -> str:
         container: Docker container name
 
     Returns:
-        Container logs
+        UIResource dict with log viewer
     """
     return await docker_logs_resource(host, container)
 
@@ -142,8 +142,12 @@ async def _read_compose_file(host: str, project: str) -> str:
     return await compose_file_resource(host, project)
 
 
-async def _read_compose_logs(host: str, project: str) -> str:
-    """Read Docker Compose stack logs."""
+async def _read_compose_logs(host: str, project: str) -> dict[str, Any]:
+    """Read Docker Compose stack logs.
+
+    Returns:
+        UIResource dict with log viewer
+    """
     return await compose_logs_resource(host, project)
 
 
@@ -167,8 +171,12 @@ async def _zfs_snapshots(host: str) -> str:
     return await zfs_snapshots_resource(host)
 
 
-async def _syslog(host: str) -> str:
-    """Get system logs from a remote host."""
+async def _syslog(host: str) -> dict[str, Any]:
+    """Get system logs from a remote host.
+
+    Returns:
+        UIResource dict with log viewer
+    """
     return await syslog_resource(host)
 
 
