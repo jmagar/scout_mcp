@@ -1,9 +1,10 @@
 """Scout tool for remote file operations via SSH."""
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from mcp_ui_server import create_ui_resource
+from mcp_ui_server.core import UIResource
 
 from scout_mcp.services import (
     broadcast_command,
@@ -73,7 +74,7 @@ async def scout(
     beam: str | None = None,
     beam_source: str | None = None,
     beam_target: str | None = None,
-) -> list[dict[str, Any]] | str:
+) -> list[UIResource] | str:
     """Scout remote files and directories via SSH.
 
     Args:
