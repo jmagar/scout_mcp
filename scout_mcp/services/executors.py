@@ -2,6 +2,8 @@
 
 import asyncio
 import shlex
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from scout_mcp.models import BroadcastResult, CommandResult
@@ -11,6 +13,15 @@ if TYPE_CHECKING:
 
     from scout_mcp.config import Config
     from scout_mcp.services.pool import ConnectionPool
+
+
+@dataclass
+class TransferResult:
+    """Result of a file transfer operation."""
+
+    success: bool
+    message: str
+    bytes_transferred: int = 0
 
 
 async def stat_path(conn: "asyncssh.SSHClientConnection", path: str) -> str | None:
@@ -903,3 +914,66 @@ async def broadcast_command(
     tasks = [execute_single(h, p) for h, p in targets]
     results = await asyncio.gather(*tasks)
     return list(results)
+
+
+async def beam_transfer(
+    conn: "asyncssh.SSHClientConnection",
+    source: str,
+    destination: str,
+    direction: str,
+) -> TransferResult:
+    """Transfer file using SFTP (beam action).
+
+    Args:
+        conn: SSH connection to remote host
+        source: Source path (local or remote depending on direction)
+        destination: Destination path (local or remote depending on direction)
+        direction: Either "upload" (local→remote) or "download" (remote→local)
+
+    Returns:
+        TransferResult with success status and message
+
+    Raises:
+        ValueError: If direction is invalid
+        RuntimeError: If transfer fails
+    """
+    if direction not in ("upload", "download"):
+        raise ValueError(
+            f"direction must be 'upload' or 'download', got '{direction}'"
+        )
+
+    try:
+        async with conn.start_sftp_client() as sftp:
+            if direction == "upload":
+                # Local → Remote
+                source_path = Path(source)
+                if not source_path.exists():
+                    raise RuntimeError(f"Source file not found: {source}")
+
+                file_size = source_path.stat().st_size
+                await sftp.put(source, destination)
+
+                return TransferResult(
+                    success=True,
+                    message=f"Uploaded {source} → {destination}",
+                    bytes_transferred=file_size,
+                )
+            else:
+                # Remote → Local
+                await sftp.get(source, destination)
+
+                # Get transferred file size
+                dest_path = Path(destination)
+                file_size = dest_path.stat().st_size if dest_path.exists() else 0
+
+                return TransferResult(
+                    success=True,
+                    message=f"Downloaded {source} → {destination}",
+                    bytes_transferred=file_size,
+                )
+    except Exception as e:
+        return TransferResult(
+            success=False,
+            message=f"Transfer failed: {e}",
+            bytes_transferred=0,
+        )

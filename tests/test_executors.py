@@ -529,3 +529,100 @@ async def test_broadcast_command_connection_error() -> None:
     assert len(results) == 1
     assert not results[0].success
     assert "SSH connection failed" in results[0].error
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_local_to_remote(mock_connection: AsyncMock) -> None:
+    """Test transferring file from local to remote."""
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import MagicMock
+
+    from scout_mcp.services.executors import beam_transfer
+
+    # Create temp local file
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
+        f.write("test content\n")
+        local_path = f.name
+
+    try:
+        remote_path = "/tmp/test_beam_target.txt"
+
+        # Mock SFTP client - use MagicMock for sync context manager protocol
+        mock_sftp = MagicMock()
+        mock_sftp.put = AsyncMock()
+
+        # Mock start_sftp_client to return an async context manager
+        # Use MagicMock instead of AsyncMock so it's not a coroutine
+        mock_sftp_context = MagicMock()
+        mock_sftp_context.__aenter__ = AsyncMock(return_value=mock_sftp)
+        mock_sftp_context.__aexit__ = AsyncMock(return_value=None)
+        mock_connection.start_sftp_client = MagicMock(return_value=mock_sftp_context)
+
+        result = await beam_transfer(
+            mock_connection,
+            source=local_path,
+            destination=remote_path,
+            direction="upload",
+        )
+
+        assert result.success is True
+        assert "uploaded" in result.message.lower()
+        mock_sftp.put.assert_called_once()
+    finally:
+        Path(local_path).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_remote_to_local(mock_connection: AsyncMock) -> None:
+    """Test transferring file from remote to local."""
+    import tempfile
+    from pathlib import Path
+    from unittest.mock import MagicMock
+
+    from scout_mcp.services.executors import beam_transfer
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        remote_path = "/etc/hostname"
+        local_path = f"{tmpdir}/hostname"
+
+        # Mock SFTP client - use MagicMock for sync context manager protocol
+        mock_sftp = MagicMock()
+
+        # Mock the get method to actually create the file
+        async def mock_get(source, dest):
+            Path(dest).write_text("test hostname\n")
+
+        mock_sftp.get = AsyncMock(side_effect=mock_get)
+
+        # Mock start_sftp_client to return an async context manager
+        # Use MagicMock instead of AsyncMock so it's not a coroutine
+        mock_sftp_context = MagicMock()
+        mock_sftp_context.__aenter__ = AsyncMock(return_value=mock_sftp)
+        mock_sftp_context.__aexit__ = AsyncMock(return_value=None)
+        mock_connection.start_sftp_client = MagicMock(return_value=mock_sftp_context)
+
+        result = await beam_transfer(
+            mock_connection,
+            source=remote_path,
+            destination=local_path,
+            direction="download",
+        )
+
+        assert result.success is True
+        assert "downloaded" in result.message.lower()
+        mock_sftp.get.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_beam_transfer_invalid_direction(mock_connection: AsyncMock) -> None:
+    """Test that invalid direction raises error."""
+    from scout_mcp.services.executors import beam_transfer
+
+    with pytest.raises(ValueError, match="direction must be"):
+        await beam_transfer(
+            mock_connection,
+            source="/tmp/source",
+            destination="/tmp/dest",
+            direction="invalid",
+        )
