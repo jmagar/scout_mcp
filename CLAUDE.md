@@ -54,6 +54,9 @@ scout("hostname:/path", "grep pattern")  # Execute command
 scout("hostname:/path", tree=True)       # Show directory tree
 scout("shart:/tmp/remote.txt", beam="/tmp/local.txt")  # Upload file
 scout("squirts:/etc/hostname", beam="/tmp/hostname")   # Download file
+
+# Remote-to-remote transfers (auto-optimized when MCP server is an endpoint)
+scout(beam_source="shart:/src/file.txt", beam_target="squirts:/dst/file.txt")
 ```
 
 ### Resources

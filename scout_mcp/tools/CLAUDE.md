@@ -49,6 +49,17 @@ scout("shart:/mnt/cache/docs/file.txt", beam="/tmp/local.txt")
 scout("squirts:/etc/hostname", beam="/tmp/hostname")
 
 # Auto-detects direction based on local file existence
+
+# Remote-to-Remote Transfers
+
+# Transfer between two remote hosts
+scout(beam_source="shart:/mnt/data/file.txt", beam_target="squirts:/backup/file.txt")
+
+# Optimized: If MCP server runs on shart, this becomes a direct upload
+scout(beam_source="shart:/local/file.txt", beam_target="squirts:/remote/file.txt")
+
+# Optimized: If MCP server runs on squirts, this becomes a direct download
+scout(beam_source="shart:/remote/file.txt", beam_target="squirts:/local/file.txt")
 ```
 
 ### Error Handling
