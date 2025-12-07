@@ -5,6 +5,7 @@ from scout_mcp.services.connection import (
     get_connection_with_retry,
 )
 from scout_mcp.services.executors import (
+    beam_transfer,
     broadcast_command,
     broadcast_read,
     cat_file,
@@ -28,6 +29,7 @@ from scout_mcp.services.state import (
 __all__ = [
     "ConnectionError",
     "ConnectionPool",
+    "beam_transfer",
     "broadcast_command",
     "broadcast_read",
     "cat_file",
