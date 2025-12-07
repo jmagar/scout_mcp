@@ -18,7 +18,17 @@ async def create_directory_ui(
     Returns:
         UIResource dict
     """
-    raise NotImplementedError("TODO: Task 3")
+    from scout_mcp.ui.templates import get_directory_explorer_html
+
+    html = get_directory_explorer_html(host, path, listing)
+
+    ui_resource = create_ui_resource({
+        "uri": f"ui://scout-directory/{host}{path}",
+        "content": {"type": "rawHtml", "htmlString": html},
+        "encoding": "text",
+    })
+
+    return ui_resource.model_dump()
 
 
 async def create_file_viewer_ui(
