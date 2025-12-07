@@ -2,7 +2,11 @@
 
 import pytest
 
-from scout_mcp.ui.generators import create_directory_ui, create_file_viewer_ui
+from scout_mcp.ui.generators import (
+    create_directory_ui,
+    create_file_viewer_ui,
+    create_log_viewer_ui,
+)
 
 
 @pytest.mark.asyncio
@@ -64,3 +68,20 @@ async def test_create_file_viewer_ui_code():
     assert result["type"] == "resource"
     assert "main.py" in result["resource"]["text"]
     assert "def hello" in result["resource"]["text"]
+
+
+@pytest.mark.asyncio
+async def test_create_log_viewer_ui():
+    """Test log viewer UI with filtering."""
+    content = """[2025-12-07 10:00:01] INFO: Application started
+[2025-12-07 10:00:02] ERROR: Failed to connect
+[2025-12-07 10:00:03] WARN: Retry attempt 1
+[2025-12-07 10:00:04] INFO: Connected successfully
+"""
+
+    result = await create_log_viewer_ui("tootie", "/var/log/app.log", content)
+
+    assert result["type"] == "resource"
+    assert "app.log" in result["resource"]["text"]
+    assert "ERROR" in result["resource"]["text"]
+    assert "filter" in result["resource"]["text"].lower()

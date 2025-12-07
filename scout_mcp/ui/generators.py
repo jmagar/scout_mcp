@@ -71,7 +71,17 @@ async def create_log_viewer_ui(
     Returns:
         UIResource dict
     """
-    raise NotImplementedError("TODO: Task 5")
+    from scout_mcp.ui.templates import get_log_viewer_html
+
+    html = get_log_viewer_html(host, path, content)
+
+    ui_resource = create_ui_resource({
+        "uri": f"ui://scout-logs/{host}{path}",
+        "content": {"type": "rawHtml", "htmlString": html},
+        "encoding": "text",
+    })
+
+    return ui_resource.model_dump()
 
 
 async def create_markdown_viewer_ui(

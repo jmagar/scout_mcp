@@ -345,3 +345,194 @@ def get_file_viewer_html(
     </body>
     </html>
     """
+
+
+def get_log_viewer_html(host: str, path: str, content: str) -> str:
+    """Generate log viewer HTML with filtering and level highlighting.
+
+    Args:
+        host: SSH hostname
+        path: Log file path
+        content: Log file contents
+
+    Returns:
+        Complete HTML page with log viewer
+    """
+    import html
+
+    # Parse log lines
+    lines = content.split("\n")
+    log_lines_html = []
+
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+
+        # Detect log level
+        level = "INFO"
+        if "ERROR" in line or "FATAL" in line:
+            level = "ERROR"
+        elif "WARN" in line:
+            level = "WARN"
+        elif "DEBUG" in line:
+            level = "DEBUG"
+
+        escaped_line = html.escape(line)
+
+        log_lines_html.append(
+            f'<div class="log-line log-{level.lower()}" data-level="{level}" '
+            f'data-line="{i+1}">{escaped_line}</div>'
+        )
+
+    logs_html = "\n".join(log_lines_html) if log_lines_html else \
+        '<div style="color: #6b7280; padding: 32px; text-align: center;">No logs</div>'
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Logs: {host}:{path}</title>
+        {get_base_styles()}
+        <style>
+            .controls {{
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+            }}
+            .filter-btn {{
+                padding: 6px 12px;
+                font-size: 13px;
+            }}
+            .filter-btn.active {{
+                background: #2563eb;
+            }}
+            .log-container {{
+                background: #111827;
+                border: 1px solid #374151;
+                border-radius: 6px;
+                padding: 16px;
+                max-height: 70vh;
+                overflow-y: auto;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 13px;
+                line-height: 1.6;
+            }}
+            .log-line {{
+                padding: 4px 8px;
+                border-left: 3px solid transparent;
+                margin-bottom: 2px;
+            }}
+            .log-line:hover {{
+                background: #1f2937;
+            }}
+            .log-error {{
+                color: #fca5a5;
+                border-left-color: #dc2626;
+                background: rgba(220, 38, 38, 0.1);
+            }}
+            .log-warn {{
+                color: #fcd34d;
+                border-left-color: #f59e0b;
+                background: rgba(245, 158, 11, 0.1);
+            }}
+            .log-info {{
+                color: #93c5fd;
+                border-left-color: #3b82f6;
+            }}
+            .log-debug {{
+                color: #9ca3af;
+                border-left-color: #6b7280;
+            }}
+            .hidden {{
+                display: none !important;
+            }}
+            .stats {{
+                font-size: 12px;
+                color: #6b7280;
+                margin-top: 8px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="title">📋 {host}:{path}</div>
+                <div class="subtitle">Log Viewer</div>
+            </div>
+
+            <div class="controls">
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search logs..."
+                    oninput="filterLogs()"
+                    style="flex: 1; min-width: 200px;"
+                />
+                <button class="filter-btn active" onclick="toggleLevel('ERROR')" id="btn-ERROR">
+                    ERROR
+                </button>
+                <button class="filter-btn active" onclick="toggleLevel('WARN')" id="btn-WARN">
+                    WARN
+                </button>
+                <button class="filter-btn active" onclick="toggleLevel('INFO')" id="btn-INFO">
+                    INFO
+                </button>
+                <button class="filter-btn active" onclick="toggleLevel('DEBUG')" id="btn-DEBUG">
+                    DEBUG
+                </button>
+            </div>
+
+            <div class="log-container" id="logContainer">
+                {logs_html}
+            </div>
+
+            <div class="stats" id="stats"></div>
+        </div>
+
+        <script>
+            const activeLevels = new Set(['ERROR', 'WARN', 'INFO', 'DEBUG']);
+
+            function toggleLevel(level) {{
+                const btn = document.getElementById('btn-' + level);
+                if (activeLevels.has(level)) {{
+                    activeLevels.delete(level);
+                    btn.classList.remove('active');
+                }} else {{
+                    activeLevels.add(level);
+                    btn.classList.add('active');
+                }}
+                filterLogs();
+            }}
+
+            function filterLogs() {{
+                const search = document.getElementById('searchInput').value.toLowerCase();
+                const lines = document.querySelectorAll('.log-line');
+                let visible = 0;
+
+                lines.forEach(line => {{
+                    const level = line.dataset.level;
+                    const text = line.textContent.toLowerCase();
+                    const levelMatch = activeLevels.has(level);
+                    const textMatch = !search || text.includes(search);
+
+                    if (levelMatch && textMatch) {{
+                        line.classList.remove('hidden');
+                        visible++;
+                    }} else {{
+                        line.classList.add('hidden');
+                    }}
+                }});
+
+                document.getElementById('stats').textContent =
+                    `Showing ${{visible}} of ${{lines.length}} lines`;
+            }}
+
+            // Initial stats
+            filterLogs();
+        </script>
+    </body>
+    </html>
+    """
