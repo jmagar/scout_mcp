@@ -5,7 +5,6 @@ and all imports work correctly from the new locations.
 """
 
 
-
 class TestModelsModule:
     """Tests for scout_mcp.models package."""
 
@@ -170,6 +169,6 @@ class TestBackwardCompatibility:
             if obj.__module__ == "scout_mcp.config"
         ]
 
-        assert (
-            "SSHHost" not in classes_in_config
-        ), "SSHHost should be imported from models, not defined in config"
+        assert "SSHHost" not in classes_in_config, (
+            "SSHHost should be imported from models, not defined in config"
+        )

@@ -161,9 +161,7 @@ class ConnectionPool:
             client_keys = [host.identity_file] if host.identity_file else None
 
             # Determine known_hosts setting
-            known_hosts_arg = (
-                None if self._known_hosts is None else self._known_hosts
-            )
+            known_hosts_arg = None if self._known_hosts is None else self._known_hosts
 
             try:
                 # Network I/O happens here - only blocks same host, not all hosts

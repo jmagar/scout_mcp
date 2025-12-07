@@ -44,8 +44,7 @@ async def check_hosts_online(
 
     names = list(hosts.keys())
     coros = [
-        check_host_online(hostname, port, timeout)
-        for hostname, port in hosts.values()
+        check_host_online(hostname, port, timeout) for hostname, port in hosts.values()
     ]
 
     results = await asyncio.gather(*coros)

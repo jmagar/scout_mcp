@@ -89,7 +89,7 @@ def validate_host(host: str) -> str:
         raise ValueError(f"Host name too long: {len(host)} chars")
 
     # Check for suspicious characters that could enable injection
-    suspicious_chars = ['/', '\\', ';', '&', '|', '$', '`', '\n', '\r', '\x00']
+    suspicious_chars = ["/", "\\", ";", "&", "|", "$", "`", "\n", "\r", "\x00"]
     for char in suspicious_chars:
         if char in host:
             raise ValueError(f"Host contains invalid characters: {host!r}")

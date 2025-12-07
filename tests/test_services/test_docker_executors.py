@@ -63,8 +63,7 @@ async def test_docker_ps_returns_containers() -> None:
     """docker_ps returns list of containers."""
     mock_conn = AsyncMock()
     docker_output = (
-        "plex\tUp 2 days\tplexinc/pms-docker\n"
-        "nginx\tExited (0)\tnginx:latest"
+        "plex\tUp 2 days\tplexinc/pms-docker\nnginx\tExited (0)\tnginx:latest"
     )
     mock_conn.run = AsyncMock(
         return_value=MagicMock(stdout=docker_output, returncode=0)

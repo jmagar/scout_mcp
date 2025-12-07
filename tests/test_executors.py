@@ -260,13 +260,13 @@ async def test_diff_files_identical(mock_connection: AsyncMock) -> None:
     """diff_files returns empty diff for identical files."""
     from scout_mcp.services.executors import diff_files
 
-    mock_connection.run.return_value = MagicMock(
-        stdout="same content", returncode=0
-    )
+    mock_connection.run.return_value = MagicMock(stdout="same content", returncode=0)
 
     diff_output, identical = await diff_files(
-        mock_connection, "/path1",
-        mock_connection, "/path2",
+        mock_connection,
+        "/path1",
+        mock_connection,
+        "/path2",
     )
 
     assert identical is True
@@ -283,8 +283,10 @@ async def test_diff_files_different() -> None:
     conn2.run.return_value = MagicMock(stdout="line1\nline3", returncode=0)
 
     diff_output, identical = await diff_files(
-        conn1, "/path1",
-        conn2, "/path2",
+        conn1,
+        "/path1",
+        conn2,
+        "/path2",
     )
 
     assert identical is False
@@ -299,9 +301,7 @@ async def test_diff_with_content_matches(mock_connection: AsyncMock) -> None:
     """diff_with_content detects matching content."""
     from scout_mcp.services.executors import diff_with_content
 
-    mock_connection.run.return_value = MagicMock(
-        stdout="expected", returncode=0
-    )
+    mock_connection.run.return_value = MagicMock(stdout="expected", returncode=0)
 
     diff_output, identical = await diff_with_content(
         mock_connection, "/path", "expected"
@@ -316,9 +316,7 @@ async def test_diff_with_content_not_matching(mock_connection: AsyncMock) -> Non
     """diff_with_content returns diff when content doesn't match."""
     from scout_mcp.services.executors import diff_with_content
 
-    mock_connection.run.return_value = MagicMock(
-        stdout="actual content", returncode=0
-    )
+    mock_connection.run.return_value = MagicMock(stdout="actual content", returncode=0)
 
     diff_output, identical = await diff_with_content(
         mock_connection, "/path", "expected content"
@@ -449,9 +447,7 @@ async def test_broadcast_command_multiple_hosts() -> None:
     conn1.run.return_value = MagicMock(stdout="output1", stderr="", returncode=0)
 
     # Host 2: successful command with stderr
-    conn2.run.return_value = MagicMock(
-        stdout="output2", stderr="warning", returncode=0
-    )
+    conn2.run.return_value = MagicMock(stdout="output2", stderr="warning", returncode=0)
 
     mock_pool.get_connection.side_effect = [conn1, conn2]
     mock_config.get_host.return_value = MagicMock()

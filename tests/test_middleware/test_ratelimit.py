@@ -175,9 +175,7 @@ class TestRateLimitMiddleware:
 
         # Mark one as stale
         async with middleware._lock:
-            middleware._buckets["192.168.1.1"].last_update = (
-                time.monotonic() - 4000
-            )
+            middleware._buckets["192.168.1.1"].last_update = time.monotonic() - 4000
 
         # Cleanup with 1 hour threshold
         removed = await middleware.cleanup_stale_buckets(max_age_seconds=3600)

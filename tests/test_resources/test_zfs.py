@@ -43,16 +43,12 @@ async def test_zfs_overview_resource_returns_pools(mock_ssh_config: Path) -> Non
         },
     ]
 
-    with patch(
-        "scout_mcp.resources.zfs.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_check", return_value=True
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_pools", return_value=pools
+    with (
+        patch("scout_mcp.resources.zfs.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch("scout_mcp.resources.zfs.zfs_check", return_value=True),
+        patch("scout_mcp.resources.zfs.zfs_pools", return_value=pools),
     ):
-
         result = await zfs_overview_resource("tootie")
 
         assert "ZFS Overview: tootie" in result
@@ -72,14 +68,11 @@ async def test_zfs_overview_resource_no_zfs(mock_ssh_config: Path) -> None:
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.zfs.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_check", return_value=False
+    with (
+        patch("scout_mcp.resources.zfs.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch("scout_mcp.resources.zfs.zfs_check", return_value=False),
     ):
-
         result = await zfs_overview_resource("tootie")
 
         assert "ZFS is not available" in result
@@ -96,17 +89,15 @@ async def test_zfs_pool_resource_returns_status(mock_ssh_config: Path) -> None:
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.zfs.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_check", return_value=True
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_pool_status",
-        return_value=("  pool: cache\n state: ONLINE", True)
+    with (
+        patch("scout_mcp.resources.zfs.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch("scout_mcp.resources.zfs.zfs_check", return_value=True),
+        patch(
+            "scout_mcp.resources.zfs.zfs_pool_status",
+            return_value=("  pool: cache\n state: ONLINE", True),
+        ),
     ):
-
         result = await zfs_pool_resource("tootie", "cache")
 
         assert "ZFS Pool: cache@tootie" in result
@@ -124,17 +115,14 @@ async def test_zfs_pool_resource_not_found(mock_ssh_config: Path) -> None:
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.zfs.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_check", return_value=True
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_pool_status", return_value=("", False)
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_pools", return_value=[]
-    ), pytest.raises(ResourceError, match="not found"):
+    with (
+        patch("scout_mcp.resources.zfs.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch("scout_mcp.resources.zfs.zfs_check", return_value=True),
+        patch("scout_mcp.resources.zfs.zfs_pool_status", return_value=("", False)),
+        patch("scout_mcp.resources.zfs.zfs_pools", return_value=[]),
+        pytest.raises(ResourceError, match="not found"),
+    ):
         await zfs_pool_resource("tootie", "missing")
 
 
@@ -157,16 +145,12 @@ async def test_zfs_snapshots_resource_returns_snapshots(mock_ssh_config: Path) -
         },
     ]
 
-    with patch(
-        "scout_mcp.resources.zfs.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_check", return_value=True
-    ), patch(
-        "scout_mcp.resources.zfs.zfs_snapshots", return_value=snapshots
+    with (
+        patch("scout_mcp.resources.zfs.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch("scout_mcp.resources.zfs.zfs_check", return_value=True),
+        patch("scout_mcp.resources.zfs.zfs_snapshots", return_value=snapshots),
     ):
-
         result = await zfs_snapshots_resource("tootie")
 
         assert "ZFS Snapshots: tootie" in result

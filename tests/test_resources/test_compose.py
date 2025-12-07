@@ -45,15 +45,14 @@ async def test_compose_list_resource_returns_projects(mock_ssh_config: Path) -> 
         },
     ]
 
-    with patch(
-        "scout_mcp.resources.compose.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.compose.compose_ls",
-        return_value=projects,
+    with (
+        patch("scout_mcp.resources.compose.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.compose.compose_ls",
+            return_value=projects,
+        ),
     ):
-
         result = await compose_list_resource("tootie")
 
         assert "Docker Compose Projects on tootie" in result
@@ -73,18 +72,17 @@ async def test_compose_file_resource_returns_config(mock_ssh_config: Path) -> No
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.compose.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.compose.compose_config",
-        return_value=(
-            "services:\n  plex:\n    image: plex",
-            "/compose/plex/docker-compose.yaml",
+    with (
+        patch("scout_mcp.resources.compose.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.compose.compose_config",
+            return_value=(
+                "services:\n  plex:\n    image: plex",
+                "/compose/plex/docker-compose.yaml",
+            ),
         ),
     ):
-
         result = await compose_file_resource("tootie", "plex")
 
         assert "plex@tootie" in result
@@ -102,14 +100,15 @@ async def test_compose_file_resource_project_not_found(mock_ssh_config: Path) ->
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.compose.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.compose.compose_config",
-        return_value=("", None),
-    ), pytest.raises(ResourceError, match="not found"):
+    with (
+        patch("scout_mcp.resources.compose.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.compose.compose_config",
+            return_value=("", None),
+        ),
+        pytest.raises(ResourceError, match="not found"),
+    ):
         await compose_file_resource("tootie", "missing")
 
 
@@ -124,15 +123,14 @@ async def test_compose_logs_resource_returns_logs(mock_ssh_config: Path) -> None
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.compose.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.compose.compose_logs",
-        return_value=("plex  | Starting server", True),
+    with (
+        patch("scout_mcp.resources.compose.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.compose.compose_logs",
+            return_value=("plex  | Starting server", True),
+        ),
     ):
-
         result = await compose_logs_resource("tootie", "plex")
 
         assert "Compose Logs: plex@tootie" in result

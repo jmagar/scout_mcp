@@ -277,11 +277,13 @@ async def docker_ps(
             continue
         parts = line.split("\t", 2)
         if len(parts) >= 3:
-            containers.append({
-                "name": parts[0],
-                "status": parts[1],
-                "image": parts[2],
-            })
+            containers.append(
+                {
+                    "name": parts[0],
+                    "status": parts[1],
+                    "image": parts[2],
+                }
+            )
 
     return containers
 
@@ -478,14 +480,16 @@ async def zfs_pools(
             continue
         parts = line.split("\t")
         if len(parts) >= 6:
-            pools.append({
-                "name": parts[0],
-                "size": parts[1],
-                "alloc": parts[2],
-                "free": parts[3],
-                "cap": parts[4],
-                "health": parts[5],
-            })
+            pools.append(
+                {
+                    "name": parts[0],
+                    "size": parts[1],
+                    "alloc": parts[2],
+                    "free": parts[3],
+                    "cap": parts[4],
+                    "health": parts[5],
+                }
+            )
     return pools
 
 
@@ -558,13 +562,15 @@ async def zfs_datasets(
             continue
         parts = line.split("\t")
         if len(parts) >= 5:
-            datasets.append({
-                "name": parts[0],
-                "used": parts[1],
-                "avail": parts[2],
-                "refer": parts[3],
-                "mountpoint": parts[4],
-            })
+            datasets.append(
+                {
+                    "name": parts[0],
+                    "used": parts[1],
+                    "avail": parts[2],
+                    "refer": parts[3],
+                    "mountpoint": parts[4],
+                }
+            )
     return datasets
 
 
@@ -590,8 +596,7 @@ async def zfs_snapshots(
         )
     else:
         cmd = (
-            f"zfs list -H -t snapshot -o name,used,creation "
-            f"2>/dev/null | tail -{limit}"
+            f"zfs list -H -t snapshot -o name,used,creation 2>/dev/null | tail -{limit}"
         )
 
     result = await conn.run(cmd, check=False)
@@ -611,11 +616,13 @@ async def zfs_snapshots(
             continue
         parts = line.split("\t", 2)
         if len(parts) >= 3:
-            snapshots.append({
-                "name": parts[0],
-                "used": parts[1],
-                "creation": parts[2],
-            })
+            snapshots.append(
+                {
+                    "name": parts[0],
+                    "used": parts[1],
+                    "creation": parts[2],
+                }
+            )
     return snapshots
 
 
@@ -938,9 +945,7 @@ async def beam_transfer(
         RuntimeError: If transfer fails
     """
     if direction not in ("upload", "download"):
-        raise ValueError(
-            f"direction must be 'upload' or 'download', got '{direction}'"
-        )
+        raise ValueError(f"direction must be 'upload' or 'download', got '{direction}'")
 
     try:
         async with conn.start_sftp_client() as sftp:

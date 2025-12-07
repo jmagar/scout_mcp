@@ -52,6 +52,8 @@ scout("hosts")                           # List available SSH hosts
 scout("hostname:/path")                  # Read file or list directory
 scout("hostname:/path", "grep pattern")  # Execute command
 scout("hostname:/path", tree=True)       # Show directory tree
+scout("shart:/tmp/remote.txt", beam="/tmp/local.txt")  # Upload file
+scout("squirts:/etc/hostname", beam="/tmp/hostname")   # Download file
 ```
 
 ### Resources

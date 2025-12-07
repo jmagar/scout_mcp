@@ -36,13 +36,13 @@ async def test_syslog_resource_returns_logs(mock_ssh_config: Path) -> None:
         "Nov 29 12:00:01 tootie kernel: eth0: link up"
     )
 
-    with patch(
-        "scout_mcp.resources.syslog.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.syslog.syslog_read",
-        return_value=(log_content, "journalctl"),
+    with (
+        patch("scout_mcp.resources.syslog.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.syslog.syslog_read",
+            return_value=(log_content, "journalctl"),
+        ),
     ):
         result = await syslog_resource("tootie")
 
@@ -63,13 +63,13 @@ async def test_syslog_resource_no_logs_available(mock_ssh_config: Path) -> None:
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
 
-    with patch(
-        "scout_mcp.resources.syslog.get_config", return_value=config
-    ), patch(
-        "scout_mcp.services.state.get_pool", return_value=mock_pool
-    ), patch(
-        "scout_mcp.resources.syslog.syslog_read",
-        return_value=("", "none"),
+    with (
+        patch("scout_mcp.resources.syslog.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+        patch(
+            "scout_mcp.resources.syslog.syslog_read",
+            return_value=("", "none"),
+        ),
     ):
         result = await syslog_resource("tootie")
 

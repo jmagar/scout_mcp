@@ -99,9 +99,7 @@ class TestAPIKeyMiddleware:
         call_next.assert_called_once_with(request)
 
     @pytest.mark.asyncio
-    async def test_auth_disabled_no_keys_allows_all(
-        self, middleware_disabled_no_keys
-    ):
+    async def test_auth_disabled_no_keys_allows_all(self, middleware_disabled_no_keys):
         """When no keys configured, all requests allowed."""
         request = MagicMock()
         request.url.path = "/mcp"

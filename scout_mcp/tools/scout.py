@@ -148,8 +148,7 @@ async def scout(
         # Beam requires a valid target, not 'hosts'
         if beam:
             return (
-                "Error: beam parameter requires a valid host:/path target, "
-                "not 'hosts'"
+                "Error: beam parameter requires a valid host:/path target, not 'hosts'"
             )
         return await handle_hosts_list()
 

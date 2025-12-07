@@ -120,6 +120,7 @@ class Config:
 
         current_host: str | None = None
         current_data: dict[str, str] = {}
+        global_defaults: dict[str, str] = {}
 
         for line in content.splitlines():
             line = line.strip()
@@ -130,7 +131,11 @@ class Config:
             host_match = re.match(r"^Host\s+(\S+)", line, re.IGNORECASE)
             if host_match:
                 # Save previous host if exists
-                if current_host and current_data.get("hostname"):
+                if (
+                    current_host
+                    and current_host != "*"
+                    and current_data.get("hostname")
+                ):
                     try:
                         port = int(current_data.get("port", "22"))
                     except ValueError:
@@ -143,7 +148,8 @@ class Config:
                         identity_file=current_data.get("identityfile"),
                     )
                 current_host = host_match.group(1)
-                current_data = {}
+                # Start with global defaults for each host (except Host *)
+                current_data = global_defaults.copy() if current_host != "*" else {}
                 continue
 
             # Match key-value pairs
@@ -151,10 +157,16 @@ class Config:
             if kv_match and current_host:
                 key = kv_match.group(1).lower()
                 value = kv_match.group(2)
+                # Expand tilde in identity file paths
+                if key == "identityfile":
+                    value = os.path.expanduser(value)
                 current_data[key] = value
+                # Save to global defaults if this is Host *
+                if current_host == "*":
+                    global_defaults[key] = value
 
         # Save last host
-        if current_host and current_data.get("hostname"):
+        if current_host and current_host != "*" and current_data.get("hostname"):
             try:
                 port = int(current_data.get("port", "22"))
             except ValueError:

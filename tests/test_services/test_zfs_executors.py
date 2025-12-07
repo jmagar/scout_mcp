@@ -17,9 +17,7 @@ from scout_mcp.services.executors import (
 async def test_zfs_check_returns_true_when_available() -> None:
     """zfs_check returns True when ZFS is available."""
     mock_conn = AsyncMock()
-    mock_conn.run = AsyncMock(
-        return_value=MagicMock(returncode=0)
-    )
+    mock_conn.run = AsyncMock(return_value=MagicMock(returncode=0))
 
     result = await zfs_check(mock_conn)
 
@@ -30,9 +28,7 @@ async def test_zfs_check_returns_true_when_available() -> None:
 async def test_zfs_check_returns_false_when_unavailable() -> None:
     """zfs_check returns False when ZFS is not available."""
     mock_conn = AsyncMock()
-    mock_conn.run = AsyncMock(
-        return_value=MagicMock(returncode=127)
-    )
+    mock_conn.run = AsyncMock(return_value=MagicMock(returncode=127))
 
     result = await zfs_check(mock_conn)
 

@@ -59,9 +59,7 @@ async def handle_hosts_list() -> str:
         return "No SSH hosts configured."
 
     # Check online status concurrently
-    host_endpoints = {
-        name: (host.hostname, host.port) for name, host in hosts.items()
-    }
+    host_endpoints = {name: (host.hostname, host.port) for name, host in hosts.items()}
     online_status = await check_hosts_online(host_endpoints, timeout=2.0)
 
     lines = ["Available hosts:"]
@@ -142,9 +140,7 @@ async def handle_file_read(
     assert conn is not None  # For mypy - error check above ensures this
 
     try:
-        contents, was_truncated = await cat_file(
-            conn, path, config.max_file_size
-        )
+        contents, was_truncated = await cat_file(conn, path, config.max_file_size)
         if was_truncated:
             contents += f"\n\n[truncated at {config.max_file_size} bytes]"
         return contents

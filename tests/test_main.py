@@ -18,10 +18,13 @@ class TestMain:
         mock_config.http_host = "0.0.0.0"
         mock_config.http_port = 8000
 
-        with patch("scout_mcp.__main__.mcp", mock_mcp), \
-             patch("scout_mcp.__main__.get_config", return_value=mock_config):
+        with (
+            patch("scout_mcp.__main__.mcp", mock_mcp),
+            patch("scout_mcp.__main__.get_config", return_value=mock_config),
+        ):
             # Import triggers if __name__ == "__main__" but we test run_server()
             from scout_mcp.__main__ import run_server
+
             run_server()
 
         mock_mcp.run.assert_called_once_with(
@@ -38,9 +41,12 @@ class TestMain:
         mock_config = MagicMock()
         mock_config.transport = "stdio"
 
-        with patch("scout_mcp.__main__.mcp", mock_mcp), \
-             patch("scout_mcp.__main__.get_config", return_value=mock_config):
+        with (
+            patch("scout_mcp.__main__.mcp", mock_mcp),
+            patch("scout_mcp.__main__.get_config", return_value=mock_config),
+        ):
             from scout_mcp.__main__ import run_server
+
             run_server()
 
         mock_mcp.run.assert_called_once_with(transport="stdio")

@@ -37,13 +37,13 @@ async def test_hosts_resource_shows_dynamic_schemes(mock_ssh_config: Path) -> No
     ) -> dict[str, bool]:
         return {name: True for name in hosts}
 
-    with patch(
-        "scout_mcp.resources.hosts.get_config", return_value=config
-    ), patch(
-        "scout_mcp.resources.hosts.check_hosts_online",
-        side_effect=mock_check_hosts,
+    with (
+        patch("scout_mcp.resources.hosts.get_config", return_value=config),
+        patch(
+            "scout_mcp.resources.hosts.check_hosts_online",
+            side_effect=mock_check_hosts,
+        ),
     ):
-
         result = await list_hosts_resource()
 
         # Should show host-specific schemes
@@ -66,13 +66,13 @@ async def test_hosts_resource_shows_examples(mock_ssh_config: Path) -> None:
     ) -> dict[str, bool]:
         return {name: True for name in hosts}
 
-    with patch(
-        "scout_mcp.resources.hosts.get_config", return_value=config
-    ), patch(
-        "scout_mcp.resources.hosts.check_hosts_online",
-        side_effect=mock_check_hosts,
+    with (
+        patch("scout_mcp.resources.hosts.get_config", return_value=config),
+        patch(
+            "scout_mcp.resources.hosts.check_hosts_online",
+            side_effect=mock_check_hosts,
+        ),
     ):
-
         result = await list_hosts_resource()
 
         # Should show practical examples

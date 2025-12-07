@@ -41,8 +41,7 @@ async def test_lifespan_registers_host_templates(mock_ssh_config: Path) -> None:
             # The lifespan should register tootie://{path*} and squirts://{path*}
             # We verify by checking if the templates attribute has our patterns
             templates = [
-                t.uri_template
-                for t in mcp._resource_manager._templates.values()
+                t.uri_template for t in mcp._resource_manager._templates.values()
             ]
 
             assert any("tootie://" in t for t in templates), (
@@ -70,19 +69,22 @@ async def test_read_host_path_reads_file(mock_ssh_config: Path) -> None:
 
     # Mock the SSH connection and pool
     mock_conn = AsyncMock()
-    mock_conn.run = AsyncMock(side_effect=[
-        MagicMock(stdout="regular file", returncode=0),  # stat call
-        MagicMock(stdout="file contents here", returncode=0),  # cat call
-    ])
+    mock_conn.run = AsyncMock(
+        side_effect=[
+            MagicMock(stdout="regular file", returncode=0),  # stat call
+            MagicMock(stdout="file contents here", returncode=0),  # cat call
+        ]
+    )
 
     mock_pool = AsyncMock()
     mock_pool.get_connection = AsyncMock(return_value=mock_conn)
     mock_pool.remove_connection = AsyncMock()
 
-    with patch("scout_mcp.server.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
-
+    with (
+        patch("scout_mcp.server.get_config", return_value=config),
+        patch("scout_mcp.resources.scout.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+    ):
         result = await _read_host_path("tootie", "etc/hosts")
 
         # Should return file contents without directory header
@@ -118,10 +120,11 @@ async def test_read_host_path_lists_directory(mock_ssh_config: Path) -> None:
     mock_pool.get_connection = AsyncMock(return_value=mock_conn)
     mock_pool.remove_connection = AsyncMock()
 
-    with patch("scout_mcp.server.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
-
+    with (
+        patch("scout_mcp.server.get_config", return_value=config),
+        patch("scout_mcp.resources.scout.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+    ):
         result = await _read_host_path("tootie", "etc")
 
         # Should return directory listing with header and ls output
@@ -165,27 +168,29 @@ async def test_dynamic_resource_integration(mock_ssh_config: Path) -> None:
 
     # Mock the SSH connection and pool
     mock_conn = AsyncMock()
-    mock_conn.run = AsyncMock(side_effect=[
-        MagicMock(stdout="regular file", returncode=0),  # stat call
-        MagicMock(stdout="test file contents", returncode=0),  # cat call
-    ])
+    mock_conn.run = AsyncMock(
+        side_effect=[
+            MagicMock(stdout="regular file", returncode=0),  # stat call
+            MagicMock(stdout="test file contents", returncode=0),  # cat call
+        ]
+    )
 
     mock_pool = AsyncMock()
     mock_pool.get_connection = AsyncMock(return_value=mock_conn)
     mock_pool.remove_connection = AsyncMock()
 
-    with patch("scout_mcp.server.get_config", return_value=config), \
-         patch("scout_mcp.resources.scout.get_config", return_value=config), \
-         patch("scout_mcp.services.state.get_pool", return_value=mock_pool):
-
+    with (
+        patch("scout_mcp.server.get_config", return_value=config),
+        patch("scout_mcp.resources.scout.get_config", return_value=config),
+        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
+    ):
         mcp = create_server()
 
         # Trigger lifespan to register dynamic resources
         async with app_lifespan(mcp):
             # Verify the template was registered
             templates = [
-                t.uri_template
-                for t in mcp._resource_manager._templates.values()
+                t.uri_template for t in mcp._resource_manager._templates.values()
             ]
             assert any("tootie://" in t for t in templates)
 
@@ -219,15 +224,11 @@ async def test_lifespan_registers_docker_templates(mock_ssh_config: Path) -> Non
 
         async with app_lifespan(mcp):
             templates = [
-                t.uri_template
-                for t in mcp._resource_manager._templates.values()
+                t.uri_template for t in mcp._resource_manager._templates.values()
             ]
 
             # Non-template resources (no placeholders)
-            resources = [
-                str(r.uri)
-                for r in mcp._resource_manager._resources.values()
-            ]
+            resources = [str(r.uri) for r in mcp._resource_manager._resources.values()]
 
             # Should have docker logs templates
             assert any("tootie://docker/" in t and "/logs" in t for t in templates), (
@@ -260,14 +261,10 @@ async def test_lifespan_registers_compose_templates(mock_ssh_config: Path) -> No
 
         async with app_lifespan(mcp):
             templates = [
-                t.uri_template
-                for t in mcp._resource_manager._templates.values()
+                t.uri_template for t in mcp._resource_manager._templates.values()
             ]
 
-            resources = [
-                str(r.uri)
-                for r in mcp._resource_manager._resources.values()
-            ]
+            resources = [str(r.uri) for r in mcp._resource_manager._resources.values()]
 
             # Should have compose file templates
             has_compose_project = any(
@@ -306,14 +303,10 @@ async def test_lifespan_registers_zfs_templates(mock_ssh_config: Path) -> None:
 
         async with app_lifespan(mcp):
             templates = [
-                t.uri_template
-                for t in mcp._resource_manager._templates.values()
+                t.uri_template for t in mcp._resource_manager._templates.values()
             ]
 
-            resources = [
-                str(r.uri)
-                for r in mcp._resource_manager._resources.values()
-            ]
+            resources = [str(r.uri) for r in mcp._resource_manager._resources.values()]
 
             # Should have zfs pool templates
             assert any("tootie://zfs/" in t and "pool" in t for t in templates), (
@@ -347,10 +340,7 @@ async def test_lifespan_registers_syslog_resources(mock_ssh_config: Path) -> Non
         mcp = create_server()
 
         async with app_lifespan(mcp):
-            resources = [
-                str(r.uri)
-                for r in mcp._resource_manager._resources.values()
-            ]
+            resources = [str(r.uri) for r in mcp._resource_manager._resources.values()]
 
             # Should have syslog resources
             assert any("tootie://syslog" in r for r in resources), (

@@ -49,10 +49,7 @@ async def zfs_overview_resource(host: str) -> str:
     pools_list = await zfs_pools(conn)
 
     if not pools_list:
-        return (
-            f"# ZFS on {host}\n\n"
-            "ZFS is installed but no pools are configured."
-        )
+        return f"# ZFS on {host}\n\nZFS is installed but no pools are configured."
 
     lines = [
         f"# ZFS Overview: {host}",
@@ -107,10 +104,7 @@ async def zfs_pool_resource(host: str, pool_name: str) -> str:
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)
     if not has_zfs:
-        return (
-            f"# ZFS Pool: {pool_name}@{host}\n\n"
-            "ZFS is not available on this host."
-        )
+        return f"# ZFS Pool: {pool_name}@{host}\n\nZFS is not available on this host."
 
     # Get pool status
     status, exists = await zfs_pool_status(conn, pool_name)
@@ -155,8 +149,7 @@ async def zfs_datasets_resource(host: str, pool_name: str) -> str:
     has_zfs = await zfs_check(conn)
     if not has_zfs:
         return (
-            f"# ZFS Datasets: {pool_name}@{host}\n\n"
-            "ZFS is not available on this host."
+            f"# ZFS Datasets: {pool_name}@{host}\n\nZFS is not available on this host."
         )
 
     # Get datasets
@@ -215,19 +208,13 @@ async def zfs_snapshots_resource(host: str) -> str:
     # Check if ZFS is available
     has_zfs = await zfs_check(conn)
     if not has_zfs:
-        return (
-            f"# ZFS Snapshots: {host}\n\n"
-            "ZFS is not available on this host."
-        )
+        return f"# ZFS Snapshots: {host}\n\nZFS is not available on this host."
 
     # Get snapshots
     snapshots_list = await zfs_snapshots(conn, limit=50)
 
     if not snapshots_list:
-        return (
-            f"# ZFS Snapshots: {host}\n\n"
-            "No snapshots found."
-        )
+        return f"# ZFS Snapshots: {host}\n\nNo snapshots found."
 
     lines = [
         f"# ZFS Snapshots: {host}",
