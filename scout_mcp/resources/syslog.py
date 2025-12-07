@@ -9,7 +9,7 @@ from scout_mcp.services.executors import syslog_read
 from scout_mcp.ui import create_log_viewer_ui
 
 
-async def syslog_resource(host: str, lines: int = 100) -> dict[str, Any]:
+async def syslog_resource(host: str, lines: int = 100) -> str:
     """Show system logs with interactive log viewer UI.
 
     Dynamically detects whether to use journalctl (systemd) or
@@ -20,7 +20,7 @@ async def syslog_resource(host: str, lines: int = 100) -> dict[str, Any]:
         lines: Number of log lines to retrieve (default 100)
 
     Returns:
-        UIResource dict with log viewer interface
+        HTML string with log viewer interface
     """
     config = get_config()
 

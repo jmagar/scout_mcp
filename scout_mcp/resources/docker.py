@@ -9,7 +9,7 @@ from scout_mcp.services.executors import docker_logs, docker_ps
 from scout_mcp.ui import create_log_viewer_ui
 
 
-async def docker_logs_resource(host: str, container: str) -> dict[str, Any]:
+async def docker_logs_resource(host: str, container: str) -> str:
     """Read Docker container logs with interactive log viewer UI.
 
     Args:
@@ -17,7 +17,7 @@ async def docker_logs_resource(host: str, container: str) -> dict[str, Any]:
         container: Docker container name
 
     Returns:
-        UIResource dict with log viewer interface
+        HTML string with log viewer interface
 
     Raises:
         ResourceError: If host unknown, connection fails, or container not found.

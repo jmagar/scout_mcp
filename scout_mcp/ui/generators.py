@@ -1,13 +1,7 @@
 """UI resource generators for different file types."""
 
-from typing import Any
 
-from mcp_ui_server import create_ui_resource  # type: ignore[import-untyped]
-
-
-async def create_directory_ui(
-    host: str, path: str, listing: str
-) -> dict[str, Any]:
+async def create_directory_ui(host: str, path: str, listing: str) -> str:
     """Create interactive file explorer UI for directory listings.
 
     Args:
@@ -16,24 +10,16 @@ async def create_directory_ui(
         listing: Directory listing output from ls -la
 
     Returns:
-        UIResource dict
+        HTML string for rendering
     """
     from scout_mcp.ui.templates import get_directory_explorer_html
 
-    html = get_directory_explorer_html(host, path, listing)
-
-    ui_resource = create_ui_resource({
-        "uri": f"ui://scout-directory/{host}{path}",
-        "content": {"type": "rawHtml", "htmlString": html},
-        "encoding": "text",
-    })
-
-    return ui_resource.model_dump()  # type: ignore[no-any-return]
+    return get_directory_explorer_html(host, path, listing)
 
 
 async def create_file_viewer_ui(
     host: str, path: str, content: str, mime_type: str = "text/plain"
-) -> dict[str, Any]:
+) -> str:
     """Create file viewer UI with syntax highlighting.
 
     Args:
@@ -43,24 +29,14 @@ async def create_file_viewer_ui(
         mime_type: MIME type for syntax highlighting
 
     Returns:
-        UIResource dict
+        HTML string for rendering
     """
     from scout_mcp.ui.templates import get_file_viewer_html
 
-    html = get_file_viewer_html(host, path, content, mime_type)
-
-    ui_resource = create_ui_resource({
-        "uri": f"ui://scout-file/{host}{path}",
-        "content": {"type": "rawHtml", "htmlString": html},
-        "encoding": "text",
-    })
-
-    return ui_resource.model_dump()  # type: ignore[no-any-return]
+    return get_file_viewer_html(host, path, content, mime_type)
 
 
-async def create_log_viewer_ui(
-    host: str, path: str, content: str
-) -> dict[str, Any]:
+async def create_log_viewer_ui(host: str, path: str, content: str) -> str:
     """Create log viewer UI with filtering and search.
 
     Args:
@@ -69,24 +45,14 @@ async def create_log_viewer_ui(
         content: Log file contents
 
     Returns:
-        UIResource dict
+        HTML string for rendering
     """
     from scout_mcp.ui.templates import get_log_viewer_html
 
-    html = get_log_viewer_html(host, path, content)
-
-    ui_resource = create_ui_resource({
-        "uri": f"ui://scout-logs/{host}{path}",
-        "content": {"type": "rawHtml", "htmlString": html},
-        "encoding": "text",
-    })
-
-    return ui_resource.model_dump()  # type: ignore[no-any-return]
+    return get_log_viewer_html(host, path, content)
 
 
-async def create_markdown_viewer_ui(
-    host: str, path: str, content: str
-) -> dict[str, Any]:
+async def create_markdown_viewer_ui(host: str, path: str, content: str) -> str:
     """Create markdown viewer UI with rendered preview.
 
     Args:
@@ -95,16 +61,8 @@ async def create_markdown_viewer_ui(
         content: Markdown content
 
     Returns:
-        UIResource dict
+        HTML string for rendering
     """
     from scout_mcp.ui.templates import get_markdown_viewer_html
 
-    html = get_markdown_viewer_html(host, path, content)
-
-    ui_resource = create_ui_resource({
-        "uri": f"ui://scout-markdown/{host}{path}",
-        "content": {"type": "rawHtml", "htmlString": html},
-        "encoding": "text",
-    })
-
-    return ui_resource.model_dump()  # type: ignore[no-any-return]
+    return get_markdown_viewer_html(host, path, content)

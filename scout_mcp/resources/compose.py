@@ -99,7 +99,7 @@ async def compose_file_resource(host: str, project: str) -> str:
     return header + content
 
 
-async def compose_logs_resource(host: str, project: str) -> dict[str, Any]:
+async def compose_logs_resource(host: str, project: str) -> str:
     """Read Docker Compose stack logs with interactive log viewer UI.
 
     Args:
@@ -107,7 +107,7 @@ async def compose_logs_resource(host: str, project: str) -> dict[str, Any]:
         project: Compose project name
 
     Returns:
-        UIResource dict with log viewer interface
+        HTML string with log viewer interface
     """
     config = get_config()
 

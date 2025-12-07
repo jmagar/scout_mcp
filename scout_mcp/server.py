@@ -107,7 +107,7 @@ async def _read_host_path(host: str, path: str) -> Union[str, dict[str, Any]]:
     return await scout_resource(host, path)
 
 
-async def _read_docker_logs(host: str, container: str) -> dict[str, Any]:
+async def _read_docker_logs(host: str, container: str) -> str:
     """Read Docker container logs on a remote host.
 
     Args:
@@ -115,7 +115,7 @@ async def _read_docker_logs(host: str, container: str) -> dict[str, Any]:
         container: Docker container name
 
     Returns:
-        UIResource dict with log viewer
+        HTML string with log viewer
     """
     return await docker_logs_resource(host, container)
 
@@ -142,11 +142,11 @@ async def _read_compose_file(host: str, project: str) -> str:
     return await compose_file_resource(host, project)
 
 
-async def _read_compose_logs(host: str, project: str) -> dict[str, Any]:
+async def _read_compose_logs(host: str, project: str) -> str:
     """Read Docker Compose stack logs.
 
     Returns:
-        UIResource dict with log viewer
+        HTML string with log viewer
     """
     return await compose_logs_resource(host, project)
 
@@ -171,11 +171,11 @@ async def _zfs_snapshots(host: str) -> str:
     return await zfs_snapshots_resource(host)
 
 
-async def _syslog(host: str) -> dict[str, Any]:
+async def _syslog(host: str) -> str:
     """Get system logs from a remote host.
 
     Returns:
-        UIResource dict with log viewer
+        HTML string with log viewer
     """
     return await syslog_resource(host)
 
