@@ -200,3 +200,148 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
     </body>
     </html>
     """
+
+
+def get_file_viewer_html(
+    host: str, path: str, content: str, mime_type: str = "text/plain"
+) -> str:
+    """Generate file viewer HTML with syntax highlighting.
+
+    Args:
+        host: SSH hostname
+        path: File path
+        content: File contents
+        mime_type: MIME type for syntax detection
+
+    Returns:
+        Complete HTML page with file viewer
+    """
+    # Escape HTML in content
+    import html
+    escaped_content = html.escape(content)
+
+    # Get file extension for syntax highlighting hint
+    extension = path.rsplit(".", 1)[-1] if "." in path else ""
+
+    # Language mapping for common extensions
+    lang_map = {
+        "py": "python",
+        "js": "javascript",
+        "ts": "typescript",
+        "json": "json",
+        "yaml": "yaml",
+        "yml": "yaml",
+        "sh": "bash",
+        "bash": "bash",
+        "md": "markdown",
+        "html": "html",
+        "css": "css",
+        "sql": "sql",
+    }
+
+    language = lang_map.get(extension, "text")
+
+    # Count lines
+    line_count = content.count("\n") + 1
+    line_numbers = "\n".join(str(i) for i in range(1, line_count + 1))
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>File: {host}:{path}</title>
+        {get_base_styles()}
+        <style>
+            .toolbar {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                background: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px 6px 0 0;
+                margin-bottom: 0;
+            }}
+            .file-info {{
+                display: flex;
+                gap: 16px;
+                font-size: 12px;
+                color: #6b7280;
+            }}
+            .code-container {{
+                display: flex;
+                background: #1f2937;
+                border: 1px solid #e5e7eb;
+                border-top: none;
+                border-radius: 0 0 6px 6px;
+                overflow: auto;
+                max-height: 80vh;
+            }}
+            .line-numbers {{
+                padding: 16px 8px;
+                background: #111827;
+                color: #6b7280;
+                text-align: right;
+                user-select: none;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                border-right: 1px solid #374151;
+            }}
+            .code-content {{
+                flex: 1;
+                padding: 16px;
+                color: #e5e7eb;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                white-space: pre;
+                overflow-x: auto;
+            }}
+            .copy-btn {{
+                background: #374151;
+                color: #e5e7eb;
+            }}
+            .copy-btn:hover {{
+                background: #4b5563;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="title">📄 {host}:{path}</div>
+                <div class="subtitle">File Viewer ({language})</div>
+            </div>
+
+            <div class="toolbar">
+                <div class="file-info">
+                    <span>Lines: {line_count}</span>
+                    <span>Type: {mime_type}</span>
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard()">
+                    Copy to Clipboard
+                </button>
+            </div>
+
+            <div class="code-container">
+                <div class="line-numbers">{line_numbers}</div>
+                <div class="code-content" id="codeContent">{escaped_content}</div>
+            </div>
+        </div>
+
+        <script>
+            function copyToClipboard() {{
+                const content = document.getElementById('codeContent').textContent;
+                navigator.clipboard.writeText(content).then(() => {{
+                    const btn = document.querySelector('.copy-btn');
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {{ btn.textContent = 'Copy to Clipboard'; }}, 2000);
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """

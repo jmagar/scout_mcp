@@ -45,7 +45,17 @@ async def create_file_viewer_ui(
     Returns:
         UIResource dict
     """
-    raise NotImplementedError("TODO: Task 4")
+    from scout_mcp.ui.templates import get_file_viewer_html
+
+    html = get_file_viewer_html(host, path, content, mime_type)
+
+    ui_resource = create_ui_resource({
+        "uri": f"ui://scout-file/{host}{path}",
+        "content": {"type": "rawHtml", "htmlString": html},
+        "encoding": "text",
+    })
+
+    return ui_resource.model_dump()
 
 
 async def create_log_viewer_ui(

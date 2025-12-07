@@ -2,7 +2,7 @@
 
 import pytest
 
-from scout_mcp.ui.generators import create_directory_ui
+from scout_mcp.ui.generators import create_directory_ui, create_file_viewer_ui
 
 
 @pytest.mark.asyncio
@@ -37,3 +37,30 @@ drwxr-xr-x 10 user group  4096 Dec  7 09:00 ..
 
     assert result["type"] == "resource"
     assert "empty" in result["resource"]["text"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_file_viewer_ui_text():
+    """Test file viewer UI for plain text."""
+    content = "Hello, World!\nLine 2\nLine 3"
+
+    result = await create_file_viewer_ui("tootie", "/tmp/test.txt", content)
+
+    assert result["type"] == "resource"
+    assert str(result["resource"]["uri"]).startswith("ui://")
+    assert "Hello, World!" in result["resource"]["text"]
+    assert "test.txt" in result["resource"]["text"]
+
+
+@pytest.mark.asyncio
+async def test_create_file_viewer_ui_code():
+    """Test file viewer UI with syntax highlighting."""
+    content = 'def hello():\n    print("world")'
+
+    result = await create_file_viewer_ui(
+        "tootie", "/code/main.py", content, mime_type="text/x-python"
+    )
+
+    assert result["type"] == "resource"
+    assert "main.py" in result["resource"]["text"]
+    assert "def hello" in result["resource"]["text"]
