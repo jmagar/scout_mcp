@@ -437,7 +437,9 @@ def create_server() -> FastMCP:
     configure_middleware(server)
 
     # Register tools
-    server.tool()(scout)
+    # Disable output_schema for scout tool - it returns UIResource in content array
+    # UIResource doesn't need outputSchema validation (per MCP spec: content vs structuredContent)
+    server.tool(output_schema=None)(scout)
 
     # Register resources
     server.resource("scout://{host}/{path*}")(scout_resource)
