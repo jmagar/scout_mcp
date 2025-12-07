@@ -6,6 +6,7 @@ from scout_mcp.ui.generators import (
     create_directory_ui,
     create_file_viewer_ui,
     create_log_viewer_ui,
+    create_markdown_viewer_ui,
 )
 
 
@@ -85,3 +86,25 @@ async def test_create_log_viewer_ui():
     assert "app.log" in result["resource"]["text"]
     assert "ERROR" in result["resource"]["text"]
     assert "filter" in result["resource"]["text"].lower()
+
+
+@pytest.mark.asyncio
+async def test_create_markdown_viewer_ui():
+    """Test markdown viewer UI."""
+    content = """# Hello World
+
+This is **bold** and *italic*.
+
+- Item 1
+- Item 2
+
+```python
+print("code")
+```
+"""
+
+    result = await create_markdown_viewer_ui("tootie", "/docs/README.md", content)
+
+    assert result["type"] == "resource"
+    assert "README.md" in result["resource"]["text"]
+    assert "Hello World" in result["resource"]["text"]

@@ -536,3 +536,173 @@ def get_log_viewer_html(host: str, path: str, content: str) -> str:
     </body>
     </html>
     """
+
+
+def get_markdown_viewer_html(host: str, path: str, content: str) -> str:
+    """Generate markdown viewer HTML with rendered preview.
+
+    Args:
+        host: SSH hostname
+        path: Markdown file path
+        content: Markdown content
+
+    Returns:
+        Complete HTML page with markdown viewer
+    """
+    import html
+    escaped_content = html.escape(content)
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Markdown: {host}:{path}</title>
+        {get_base_styles()}
+        <script src="https://cdn.jsdelivr.net/npm/marked@11.1.0/marked.min.js"></script>
+        <style>
+            .view-controls {{
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+            }}
+            .view-btn {{
+                padding: 6px 16px;
+                font-size: 13px;
+            }}
+            .view-btn.active {{
+                background: #2563eb;
+            }}
+            .markdown-rendered {{
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                padding: 24px;
+                line-height: 1.7;
+            }}
+            .markdown-rendered h1 {{
+                font-size: 28px;
+                font-weight: 700;
+                margin: 24px 0 16px 0;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #e5e7eb;
+            }}
+            .markdown-rendered h2 {{
+                font-size: 22px;
+                font-weight: 600;
+                margin: 20px 0 12px 0;
+            }}
+            .markdown-rendered h3 {{
+                font-size: 18px;
+                font-weight: 600;
+                margin: 16px 0 8px 0;
+            }}
+            .markdown-rendered p {{
+                margin: 12px 0;
+            }}
+            .markdown-rendered ul, .markdown-rendered ol {{
+                margin: 12px 0;
+                padding-left: 24px;
+            }}
+            .markdown-rendered li {{
+                margin: 6px 0;
+            }}
+            .markdown-rendered code {{
+                background: #f3f4f6;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 13px;
+            }}
+            .markdown-rendered pre {{
+                background: #1f2937;
+                color: #e5e7eb;
+                padding: 16px;
+                border-radius: 6px;
+                overflow-x: auto;
+                margin: 16px 0;
+            }}
+            .markdown-rendered pre code {{
+                background: none;
+                padding: 0;
+                color: inherit;
+            }}
+            .markdown-rendered blockquote {{
+                border-left: 4px solid #3b82f6;
+                padding-left: 16px;
+                margin: 16px 0;
+                color: #6b7280;
+            }}
+            .markdown-rendered a {{
+                color: #3b82f6;
+                text-decoration: none;
+            }}
+            .markdown-rendered a:hover {{
+                text-decoration: underline;
+            }}
+            .markdown-raw {{
+                background: #1f2937;
+                color: #e5e7eb;
+                border: 1px solid #374151;
+                border-radius: 6px;
+                padding: 16px;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 13px;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                overflow-x: auto;
+            }}
+            .hidden {{
+                display: none;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="title">📝 {host}:{path}</div>
+                <div class="subtitle">Markdown Viewer</div>
+            </div>
+
+            <div class="view-controls">
+                <button class="view-btn active" onclick="showView('rendered')" id="btn-rendered">
+                    Preview
+                </button>
+                <button class="view-btn" onclick="showView('raw')" id="btn-raw">
+                    Source
+                </button>
+            </div>
+
+            <div id="renderedView" class="markdown-rendered"></div>
+            <div id="rawView" class="markdown-raw hidden">{escaped_content}</div>
+        </div>
+
+        <script>
+            const markdownContent = `{escaped_content}`;
+
+            // Render markdown
+            document.getElementById('renderedView').innerHTML = marked.parse(markdownContent);
+
+            function showView(view) {{
+                const renderedView = document.getElementById('renderedView');
+                const rawView = document.getElementById('rawView');
+                const renderedBtn = document.getElementById('btn-rendered');
+                const rawBtn = document.getElementById('btn-raw');
+
+                if (view === 'rendered') {{
+                    renderedView.classList.remove('hidden');
+                    rawView.classList.add('hidden');
+                    renderedBtn.classList.add('active');
+                    rawBtn.classList.remove('active');
+                }} else {{
+                    renderedView.classList.add('hidden');
+                    rawView.classList.remove('hidden');
+                    renderedBtn.classList.remove('active');
+                    rawBtn.classList.add('active');
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
