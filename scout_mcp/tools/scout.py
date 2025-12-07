@@ -68,6 +68,8 @@ async def scout(
     diff_content: str | None = None,
     targets: list[str] | None = None,
     beam: str | None = None,
+    beam_source: str | None = None,
+    beam_target: str | None = None,
 ) -> str:
     """Scout remote files and directories via SSH.
 
@@ -83,9 +85,11 @@ async def scout(
         depth: Maximum depth for find operations (default: 5).
         diff: Another target to compare against (e.g., "host2:/path").
         diff_content: Expected content to compare file against.
-        beam: Local path for file transfer via SFTP.
+        beam: Local path for file transfer (backward compatible).
               If local file exists → upload to remote target.
               If local file doesn't exist → download from remote target.
+        beam_source: Source for remote-to-remote transfer (format: "host:/path").
+        beam_target: Target for remote-to-remote transfer (format: "host:/path").
 
     Examples:
         scout("hosts") - List available SSH hosts
@@ -100,6 +104,7 @@ async def scout(
         scout(targets=["web1:/var/log/app.log", "web2:/var/log/app.log"]) - Broadcast
         scout(targets=["host1:/etc", "host2:/etc"], query="ls -la") - Broadcast cmd
         scout("shart:/tmp/remote.txt", beam="/tmp/local.txt") - Upload or download
+        scout(beam_source="shart:/tmp/file.txt", beam_target="squirts:/tmp/file.txt") - Remote-to-remote
 
     Returns:
         File contents, directory listing, command output, search results,
@@ -107,6 +112,29 @@ async def scout(
     """
     config = get_config()
     pool = get_pool()
+
+    # Validate beam parameters
+    if beam and (beam_source or beam_target):
+        return (
+            "Error: Cannot use both 'beam' and 'beam_source/beam_target'. "
+            "Use 'beam' for local transfers or 'beam_source/beam_target' for remote-to-remote."
+        )
+
+    if beam_source and not beam_target:
+        return "Error: beam_source requires beam_target to be specified."
+
+    if beam_target and not beam_source:
+        return "Error: beam_target requires beam_source to be specified."
+
+    # Handle remote-to-remote beam transfer
+    if beam_source and beam_target:
+        from scout_mcp.tools.handlers import handle_beam_transfer_remote_to_remote
+
+        return await handle_beam_transfer_remote_to_remote(
+            config,
+            beam_source,
+            beam_target,
+        )
 
     # Handle multi-host broadcast
     if targets:

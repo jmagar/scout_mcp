@@ -249,3 +249,101 @@ async def handle_beam_transfer(
 
     except Exception as e:
         return f"Error: Beam transfer failed: {e}"
+
+
+async def handle_beam_transfer_remote_to_remote(
+    config: "Config",
+    beam_source: str,
+    beam_target: str,
+) -> str:
+    """Handle remote-to-remote file transfer.
+
+    Args:
+        config: Scout configuration
+        beam_source: Source in format "host:/path"
+        beam_target: Target in format "host:/path"
+
+    Returns:
+        Status message describing transfer result.
+    """
+    from scout_mcp.utils.parser import parse_target
+    from scout_mcp.utils.hostname import get_local_hostname, get_short_hostname
+    from scout_mcp.services import get_connection_with_retry
+    from scout_mcp.services.executors import beam_transfer, beam_transfer_remote_to_remote
+
+    # Parse source and target
+    try:
+        source_parsed = parse_target(beam_source)
+        target_parsed = parse_target(beam_target)
+    except ValueError as e:
+        return f"Error: {e}"
+
+    # Validate both are host:/path format
+    if source_parsed.is_hosts_command or source_parsed.host is None:
+        return "Error: beam_source must be in format 'host:/path'"
+
+    if target_parsed.is_hosts_command or target_parsed.host is None:
+        return "Error: beam_target must be in format 'host:/path'"
+
+    # Get SSH host configs
+    source_ssh_host = config.get_host(source_parsed.host)
+    if source_ssh_host is None:
+        available = ", ".join(sorted(config.get_hosts().keys()))
+        return f"Error: Unknown source host '{source_parsed.host}'. Available: {available}"
+
+    target_ssh_host = config.get_host(target_parsed.host)
+    if target_ssh_host is None:
+        available = ", ".join(sorted(config.get_hosts().keys()))
+        return f"Error: Unknown target host '{target_parsed.host}'. Available: {available}"
+
+    # Detect current hostname for optimization
+    current_hostname = get_short_hostname(get_local_hostname())
+
+    # Determine transfer strategy
+    source_host = source_parsed.host if source_parsed.host != current_hostname else None
+    target_host = target_parsed.host if target_parsed.host != current_hostname else None
+
+    try:
+        # Case 1: Optimized to local → remote (source is current host)
+        if source_host is None and target_host is not None:
+            target_conn = await get_connection_with_retry(target_ssh_host)
+            result = await beam_transfer(
+                target_conn,
+                source_parsed.path,  # Local path
+                target_parsed.path,  # Remote path
+                "upload",
+            )
+
+        # Case 2: Optimized to remote → local (target is current host)
+        elif source_host is not None and target_host is None:
+            source_conn = await get_connection_with_retry(source_ssh_host)
+            result = await beam_transfer(
+                source_conn,
+                source_parsed.path,  # Remote path
+                target_parsed.path,  # Local path
+                "download",
+            )
+
+        # Case 3: Remote → remote (neither is current host)
+        elif source_host is not None and target_host is not None:
+            source_conn = await get_connection_with_retry(source_ssh_host)
+            target_conn = await get_connection_with_retry(target_ssh_host)
+            result = await beam_transfer_remote_to_remote(
+                source_conn,
+                target_conn,
+                source_parsed.path,
+                target_parsed.path,
+            )
+
+        else:
+            return "Error: Cannot transfer from local to local"
+
+        # Format result
+        if result.success:
+            size_kb = result.bytes_transferred / 1024
+            return f"✓ {result.message}\n  Size: {size_kb:.2f} KB"
+        else:
+            return f"✗ Transfer failed: {result.message}"
+
+    except Exception as e:
+        return f"Error: Beam transfer failed: {e}"
