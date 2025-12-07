@@ -46,6 +46,61 @@ Add to your Claude Code MCP config:
 }
 ```
 
+## Interactive UI
+
+Scout MCP provides interactive UI components for enhanced file browsing:
+
+### File Explorer
+Access any directory to see an interactive file explorer:
+```
+tootie://mnt/cache/compose
+```
+
+Features:
+- Sortable listings
+- Search/filter
+- File type icons
+- Size and dates
+
+### Log Viewer
+Log files display with syntax highlighting and filtering:
+```
+tootie://compose/plex/logs
+tootie://var/log/app.log
+```
+
+Features:
+- Level filtering (ERROR/WARN/INFO/DEBUG)
+- Search functionality
+- Syntax highlighting
+- Line statistics
+
+### Markdown Viewer
+Markdown files render with live preview:
+```
+tootie://docs/README.md
+```
+
+Features:
+- Live rendered preview
+- Source view toggle
+- Syntax highlighting
+- Proper formatting
+
+### File Viewer
+Code and text files show with syntax highlighting:
+```
+tootie://app/main.py
+```
+
+Features:
+- Language detection
+- Line numbers
+- Copy to clipboard
+- Syntax highlighting
+
+See [docs/MCP-UI.md](docs/MCP-UI.md) for complete UI documentation.
+
 ## Tool: scout
 
 ### List available hosts
