@@ -21,6 +21,7 @@ async def scout(
 | `scout("host:/path")` | Read file or list directory |
 | `scout("host:/path", tree=True)` | Show directory tree |
 | `scout("host:/path", "cmd")` | Execute shell command |
+| `scout("host:/remote", beam="/local")` | Upload or download file |
 
 ### Examples
 
@@ -40,6 +41,14 @@ scout("squirts:/home/user/code", tree=True)
 # Run command
 scout("dookie:/var/log", "grep ERROR app.log")
 scout("squirts:~/code", "rg 'TODO' -t py")
+
+# Upload file (local → remote)
+scout("shart:/mnt/cache/docs/file.txt", beam="/tmp/local.txt")
+
+# Download file (remote → local)
+scout("squirts:/etc/hostname", beam="/tmp/hostname")
+
+# Auto-detects direction based on local file existence
 ```
 
 ### Error Handling

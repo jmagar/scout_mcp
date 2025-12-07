@@ -74,6 +74,28 @@ scout("hostname:~/code", "find . -name '*.md' -mtime -1")
 scout("hostname:/var/log", "tail -100 app.log | grep ERROR")
 ```
 
+## File Transfers
+
+Scout includes `beam` - a simple file transfer feature using SFTP:
+
+```python
+# Upload: local file exists → transfer to remote
+mcp__scout__scout(
+    target="shart:/mnt/cache/docs/report.pdf",
+    beam="/tmp/local-report.pdf"
+)
+
+# Download: local file doesn't exist → download from remote
+mcp__scout__scout(
+    target="squirts:/var/log/app.log",
+    beam="/tmp/app.log"
+)
+```
+
+Direction is auto-detected:
+- Local file exists → Upload (local → remote)
+- Local file doesn't exist → Download (remote → local)
+
 ## Security
 
 > **Warning**: Scout MCP provides remote shell access. Deploy with care.
