@@ -22,6 +22,7 @@ from scout_mcp.utils.ping import check_hosts_online
 if TYPE_CHECKING:
     import asyncssh
 
+    from scout_mcp.config import Config
     from scout_mcp.models import SSHHost
 
 logger = logging.getLogger(__name__)
@@ -266,10 +267,13 @@ async def handle_beam_transfer_remote_to_remote(
     Returns:
         Status message describing transfer result.
     """
-    from scout_mcp.utils.parser import parse_target
-    from scout_mcp.utils.hostname import is_localhost_target
     from scout_mcp.services import get_connection_with_retry
-    from scout_mcp.services.executors import beam_transfer, beam_transfer_remote_to_remote
+    from scout_mcp.services.executors import (
+        beam_transfer,
+        beam_transfer_remote_to_remote,
+    )
+    from scout_mcp.utils.hostname import is_localhost_target
+    from scout_mcp.utils.parser import parse_target
 
     # Parse source and target
     try:
@@ -289,12 +293,18 @@ async def handle_beam_transfer_remote_to_remote(
     source_ssh_host = config.get_host(source_parsed.host)
     if source_ssh_host is None:
         available = ", ".join(sorted(config.get_hosts().keys()))
-        return f"Error: Unknown source host '{source_parsed.host}'. Available: {available}"
+        return (
+            f"Error: Unknown source host '{source_parsed.host}'. "
+            f"Available: {available}"
+        )
 
     target_ssh_host = config.get_host(target_parsed.host)
     if target_ssh_host is None:
         available = ", ".join(sorted(config.get_hosts().keys()))
-        return f"Error: Unknown target host '{target_parsed.host}'. Available: {available}"
+        return (
+            f"Error: Unknown target host '{target_parsed.host}'. "
+            f"Available: {available}"
+        )
 
     # Determine transfer strategy based on localhost detection
     source_is_local = is_localhost_target(source_parsed.host)

@@ -6,8 +6,9 @@ import socket
 def get_server_hostname() -> str:
     """Get the hostname of the machine running Scout MCP.
 
-    Returns:
-        Hostname string (lowercase for consistent comparison)
+    <returns>
+    Hostname string (lowercase for consistent comparison)
+    </returns>
     """
     return socket.gethostname().lower()
 
@@ -15,11 +16,13 @@ def get_server_hostname() -> str:
 def is_localhost_target(target_host: str) -> bool:
     """Check if target host is the same as the server host.
 
-    Args:
-        target_host: SSH host name to check
+    <parameters>
+    target_host: SSH host name to check
+    </parameters>
 
-    Returns:
-        True if target matches server hostname (case-insensitive)
+    <returns>
+    True if target matches server hostname (case-insensitive)
+    </returns>
     """
     if not target_host:
         return False

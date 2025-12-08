@@ -1,1 +1,1 @@
-# Test utils package
+"""Test utils package."""

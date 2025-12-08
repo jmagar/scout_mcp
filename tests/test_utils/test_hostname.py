@@ -1,6 +1,5 @@
 """Tests for hostname detection utilities."""
 
-import pytest
 from scout_mcp.utils.hostname import get_server_hostname, is_localhost_target
 
 
