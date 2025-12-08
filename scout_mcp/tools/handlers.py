@@ -267,7 +267,7 @@ async def handle_beam_transfer_remote_to_remote(
         Status message describing transfer result.
     """
     from scout_mcp.utils.parser import parse_target
-    from scout_mcp.utils.hostname import get_local_hostname, get_short_hostname
+    from scout_mcp.utils.hostname import is_localhost_target
     from scout_mcp.services import get_connection_with_retry
     from scout_mcp.services.executors import beam_transfer, beam_transfer_remote_to_remote
 
@@ -296,12 +296,13 @@ async def handle_beam_transfer_remote_to_remote(
         available = ", ".join(sorted(config.get_hosts().keys()))
         return f"Error: Unknown target host '{target_parsed.host}'. Available: {available}"
 
-    # Detect current hostname for optimization
-    current_hostname = get_short_hostname(get_local_hostname())
+    # Determine transfer strategy based on localhost detection
+    source_is_local = is_localhost_target(source_parsed.host)
+    target_is_local = is_localhost_target(target_parsed.host)
 
-    # Determine transfer strategy
-    source_host = source_parsed.host if source_parsed.host != current_hostname else None
-    target_host = target_parsed.host if target_parsed.host != current_hostname else None
+    # Set to None if localhost for optimization
+    source_host = None if source_is_local else source_parsed.host
+    target_host = None if target_is_local else target_parsed.host
 
     try:
         # Case 1: Optimized to local → remote (source is current host)

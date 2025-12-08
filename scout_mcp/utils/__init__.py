@@ -1,6 +1,7 @@
 """Utilities for Scout MCP."""
 
 from scout_mcp.utils.console import ColorfulFormatter, MCPRequestFormatter
+from scout_mcp.utils.hostname import get_server_hostname, is_localhost_target
 from scout_mcp.utils.mime import get_mime_type
 from scout_mcp.utils.parser import parse_target
 from scout_mcp.utils.ping import check_host_online, check_hosts_online
@@ -12,6 +13,8 @@ __all__ = [
     "check_hosts_online",
     "ColorfulFormatter",
     "get_mime_type",
+    "get_server_hostname",
+    "is_localhost_target",
     "MCPRequestFormatter",
     "parse_target",
     "PathTraversalError",
