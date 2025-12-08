@@ -283,3 +283,36 @@ class TestTransportConfig:
         monkeypatch.setenv("SCOUT_TRANSPORT", "invalid")
         config = Config(ssh_config_path=tmp_path / "ssh_config")
         assert config.transport == "http"
+
+
+def test_config_marks_localhost_hosts(tmp_path: Path) -> None:
+    """Config should mark hosts matching server hostname as localhost."""
+    from scout_mcp.utils.hostname import get_server_hostname
+
+    config_content = f"""
+Host {get_server_hostname()}
+    HostName tootie.example.com
+    User root
+    Port 29229
+
+Host remote
+    HostName remote.example.com
+    User admin
+    Port 22
+"""
+
+    config = Config()
+    config.ssh_config_path = tmp_path / "ssh_config"
+    config.ssh_config_path.write_text(config_content)
+
+    hosts = config.get_hosts()
+
+    # Server hostname should be marked as localhost
+    server_host = hosts.get(get_server_hostname())
+    assert server_host is not None
+    assert server_host.is_localhost is True
+
+    # Remote host should not be localhost
+    remote_host = hosts.get("remote")
+    assert remote_host is not None
+    assert remote_host.is_localhost is False

@@ -8,6 +8,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from scout_mcp.models import SSHHost
+from scout_mcp.utils import is_localhost_target
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ class Config:
                         user=current_data.get("user", "root"),
                         port=port,
                         identity_file=current_data.get("identityfile"),
+                        is_localhost=is_localhost_target(current_host),
                     )
                 current_host = host_match.group(1)
                 # Start with global defaults for each host (except Host *)
@@ -177,6 +179,7 @@ class Config:
                 user=current_data.get("user", "root"),
                 port=port,
                 identity_file=current_data.get("identityfile"),
+                is_localhost=is_localhost_target(current_host),
             )
 
         self._parsed = True
