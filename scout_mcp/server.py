@@ -36,7 +36,7 @@ from scout_mcp.resources import (
     zfs_snapshots_resource,
 )
 from scout_mcp.services import get_config, get_pool
-from scout_mcp.tools import scout
+from scout_mcp.tools import scout, test_external_url, test_raw_html, test_remote_dom
 from scout_mcp.utils.console import MCPRequestFormatter
 
 
@@ -440,6 +440,11 @@ def create_server() -> FastMCP:
     # Disable output_schema for scout tool - it returns UIResource in content array
     # UIResource doesn't need outputSchema validation (per MCP spec: content vs structuredContent)
     server.tool(output_schema=None)(scout)
+
+    # Register MCP-UI test tools
+    server.tool(output_schema=None)(test_raw_html)
+    server.tool(output_schema=None)(test_remote_dom)
+    server.tool(output_schema=None)(test_external_url)
 
     # Register resources
     server.resource("scout://{host}/{path*}")(scout_resource)
