@@ -281,8 +281,10 @@ async def scout(
             content,
             mime_type="text/plain"
         )
+        # Construct URI without double slashes
+        path_clean = parsed.path.lstrip('/')
         ui_resource = create_ui_resource({
-            "uri": f"ui://scout/{parsed.host}/{parsed.path}",
+            "uri": f"ui://scout/{parsed.host}/{path_clean}",
             "content": {"type": "rawHtml", "htmlString": html},
             "encoding": "text"
         })
@@ -295,8 +297,10 @@ async def scout(
             parsed.path,
             listing
         )
+        # Construct URI without double slashes
+        path_clean = parsed.path.lstrip('/')
         ui_resource = create_ui_resource({
-            "uri": f"ui://scout/{parsed.host}/{parsed.path}",
+            "uri": f"ui://scout/{parsed.host}/{path_clean}",
             "content": {"type": "rawHtml", "htmlString": html},
             "encoding": "text"
         })
