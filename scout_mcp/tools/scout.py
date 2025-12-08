@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from mcp_ui_server import create_ui_resource
 from mcp_ui_server.core import UIResource
+from mcp_ui_server.exceptions import InvalidURIError
 
 from scout_mcp.services import (
     broadcast_command,
@@ -283,12 +284,30 @@ async def scout(
         )
         # Construct URI without double slashes
         path_clean = parsed.path.lstrip('/')
-        ui_resource = create_ui_resource({
-            "uri": f"ui://scout/{parsed.host}/{path_clean}",
-            "content": {"type": "rawHtml", "htmlString": html},
-            "encoding": "text"
-        })
-        return [ui_resource]
+        uri = f"ui://scout/{parsed.host}/{path_clean}"
+
+        try:
+            logger.debug(
+                "Creating file viewer UIResource (host=%s, path=%s, uri=%s)",
+                parsed.host, parsed.path, uri
+            )
+            ui_resource = create_ui_resource({
+                "uri": uri,
+                "content": {"type": "rawHtml", "htmlString": html},
+                "encoding": "text"
+            })
+            logger.info(
+                "Successfully created file viewer UIResource (URI: %s, content_length: %d bytes)",
+                ui_resource.resource.uri,
+                len(html)
+            )
+            return [ui_resource]
+        except InvalidURIError as e:
+            logger.error("Invalid URI format for file viewer (uri=%s): %s", uri, e)
+            return f"Error: Failed to create UI resource - invalid URI format: {e}"
+        except Exception as e:
+            logger.exception("Unexpected error creating file viewer UIResource (path=%s): %s", parsed.path, e)
+            return f"Error: Failed to create UI resource: {e}"
     else:
         # Return interactive directory explorer UI
         listing = await handle_directory_list(ssh_host, parsed.path, tree)
@@ -299,9 +318,27 @@ async def scout(
         )
         # Construct URI without double slashes
         path_clean = parsed.path.lstrip('/')
-        ui_resource = create_ui_resource({
-            "uri": f"ui://scout/{parsed.host}/{path_clean}",
-            "content": {"type": "rawHtml", "htmlString": html},
-            "encoding": "text"
-        })
-        return [ui_resource]
+        uri = f"ui://scout/{parsed.host}/{path_clean}"
+
+        try:
+            logger.debug(
+                "Creating directory explorer UIResource (host=%s, path=%s, uri=%s)",
+                parsed.host, parsed.path, uri
+            )
+            ui_resource = create_ui_resource({
+                "uri": uri,
+                "content": {"type": "rawHtml", "htmlString": html},
+                "encoding": "text"
+            })
+            logger.info(
+                "Successfully created directory explorer UIResource (URI: %s, content_length: %d bytes)",
+                ui_resource.resource.uri,
+                len(html)
+            )
+            return [ui_resource]
+        except InvalidURIError as e:
+            logger.error("Invalid URI format for directory explorer (uri=%s): %s", uri, e)
+            return f"Error: Failed to create UI resource - invalid URI format: {e}"
+        except Exception as e:
+            logger.exception("Unexpected error creating directory explorer UIResource (path=%s): %s", parsed.path, e)
+            return f"Error: Failed to create UI resource: {e}"

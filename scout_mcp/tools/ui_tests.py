@@ -1,7 +1,12 @@
 """MCP-UI test tools demonstrating different content types."""
 
+import logging
+
 from mcp_ui_server import create_ui_resource
 from mcp_ui_server.core import UIResource
+from mcp_ui_server.exceptions import InvalidURIError
+
+logger = logging.getLogger(__name__)
 
 
 def test_raw_html() -> list[UIResource]:
@@ -113,13 +118,25 @@ def test_raw_html() -> list[UIResource]:
     </html>
     """
 
-    ui_resource = create_ui_resource({
-        "uri": "ui://scout/test/raw-html",
-        "content": {"type": "rawHtml", "htmlString": html},
-        "encoding": "text"
-    })
-
-    return [ui_resource]
+    try:
+        logger.debug("Creating rawHtml UIResource with URI: ui://scout/test/raw-html")
+        ui_resource = create_ui_resource({
+            "uri": "ui://scout/test/raw-html",
+            "content": {"type": "rawHtml", "htmlString": html},
+            "encoding": "text"
+        })
+        logger.info(
+            "Successfully created rawHtml UIResource (URI: %s, content_length: %d bytes)",
+            ui_resource.resource.uri,
+            len(html)
+        )
+        return [ui_resource]
+    except InvalidURIError as e:
+        logger.error("Invalid URI format for rawHtml test: %s", e)
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error creating rawHtml UIResource: %s", e)
+        raise
 
 
 def test_remote_dom() -> list[UIResource]:
@@ -216,17 +233,29 @@ def test_remote_dom() -> list[UIResource]:
     return card;
     """
 
-    ui_resource = create_ui_resource({
-        "uri": "ui://scout/test/remote-dom",
-        "content": {
-            "type": "remoteDom",
-            "script": js_code,
-            "framework": "react"
-        },
-        "encoding": "text"
-    })
-
-    return [ui_resource]
+    try:
+        logger.debug("Creating remoteDom UIResource with URI: ui://scout/test/remote-dom")
+        ui_resource = create_ui_resource({
+            "uri": "ui://scout/test/remote-dom",
+            "content": {
+                "type": "remoteDom",
+                "script": js_code,
+                "framework": "react"
+            },
+            "encoding": "text"
+        })
+        logger.info(
+            "Successfully created remoteDom UIResource (URI: %s, script_length: %d bytes)",
+            ui_resource.resource.uri,
+            len(js_code)
+        )
+        return [ui_resource]
+    except InvalidURIError as e:
+        logger.error("Invalid URI format for remoteDom test: %s", e)
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error creating remoteDom UIResource: %s", e)
+        raise
 
 
 def test_external_url() -> list[UIResource]:
@@ -238,19 +267,31 @@ def test_external_url() -> list[UIResource]:
     Returns:
         List containing a single UIResource with externalUrl content
     """
-    ui_resource = create_ui_resource({
-        "uri": "ui://scout/test/external-url",
-        "content": {
-            "type": "externalUrl",
-            "iframeUrl": "https://example.com",
-            "cssProps": {
-                "width": "100%",
-                "height": "600px",
-                "border": "2px solid #e2e8f0",
-                "borderRadius": "8px"
-            }
-        },
-        "encoding": "text"
-    })
-
-    return [ui_resource]
+    try:
+        logger.debug("Creating externalUrl UIResource with URI: ui://scout/test/external-url")
+        ui_resource = create_ui_resource({
+            "uri": "ui://scout/test/external-url",
+            "content": {
+                "type": "externalUrl",
+                "iframeUrl": "https://example.com",
+                "cssProps": {
+                    "width": "100%",
+                    "height": "600px",
+                    "border": "2px solid #e2e8f0",
+                    "borderRadius": "8px"
+                }
+            },
+            "encoding": "text"
+        })
+        logger.info(
+            "Successfully created externalUrl UIResource (URI: %s, target: %s)",
+            ui_resource.resource.uri,
+            "https://example.com"
+        )
+        return [ui_resource]
+    except InvalidURIError as e:
+        logger.error("Invalid URI format for externalUrl test: %s", e)
+        raise
+    except Exception as e:
+        logger.exception("Unexpected error creating externalUrl UIResource: %s", e)
+        raise
