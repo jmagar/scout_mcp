@@ -151,12 +151,17 @@ class ConnectionPool:
             await self._evict_lru_if_needed()
 
             # Create new connection (only holds host-specific lock, not global)
+            # Use localhost override if applicable
+            connect_host = host.connection_hostname
+            connect_port = host.connection_port
+
             logger.info(
-                "Opening SSH connection to %s (%s@%s:%d)",
+                "Opening SSH connection to %s (%s@%s:%d%s)",
                 host.name,
                 host.user,
-                host.hostname,
-                host.port,
+                connect_host,
+                connect_port,
+                " (localhost override)" if host.is_localhost else "",
             )
             client_keys = [host.identity_file] if host.identity_file else None
 
@@ -166,8 +171,8 @@ class ConnectionPool:
             try:
                 # Network I/O happens here - only blocks same host, not all hosts
                 conn = await asyncssh.connect(
-                    host.hostname,
-                    port=host.port,
+                    connect_host,
+                    port=connect_port,
                     username=host.user,
                     known_hosts=known_hosts_arg,
                     client_keys=client_keys,
@@ -191,8 +196,8 @@ class ConnectionPool:
                     )
                     # Retry with verification disabled for this host
                     conn = await asyncssh.connect(
-                        host.hostname,
-                        port=host.port,
+                        connect_host,
+                        port=connect_port,
                         username=host.user,
                         known_hosts=None,
                         client_keys=client_keys,
@@ -205,10 +210,11 @@ class ConnectionPool:
                 self._connections.move_to_end(host.name)
 
             logger.info(
-                "SSH connection established to %s (pool_size=%d/%d)",
+                "SSH connection established to %s (pool_size=%d/%d)%s",
                 host.name,
                 len(self._connections),
                 self.max_size,
+                " via localhost" if host.is_localhost else "",
             )
 
             # Start cleanup task if not running
