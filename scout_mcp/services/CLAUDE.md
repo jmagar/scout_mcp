@@ -41,6 +41,24 @@ class ConnectionPool:
 3. If stale/missing: create new via asyncssh.connect()
 4. Start cleanup task if first connection
 
+### Localhost Detection
+
+The server automatically detects when a target host is the same machine running Scout MCP:
+
+- Compares SSH host names against server hostname (case-insensitive)
+- Handles both short names and FQDNs
+- Automatically uses `127.0.0.1:22` for localhost connections
+- Avoids external IP connection issues for same-machine access
+
+Example:
+```python
+# If Scout MCP is running on "tootie"
+scout("tootie:/var/log")  # Connects to 127.0.0.1:22 (localhost)
+scout("remote:/var/log")  # Connects to remote:22 (network)
+```
+
+This ensures resources work correctly when accessing the server's own filesystem, Docker containers, ZFS pools, etc.
+
 ### executors.py - SSH Commands
 ```python
 async def stat_path(conn, path) -> str | None
