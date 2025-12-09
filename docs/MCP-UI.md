@@ -1,6 +1,27 @@
 # MCP-UI Integration
 
-Scout MCP includes interactive UI components for enhanced file browsing, log viewing, and markdown rendering.
+Scout MCP includes optional interactive UI components for enhanced file browsing, log viewing, and markdown rendering.
+
+## Configuration
+
+**By default, MCP-UI is disabled** for better compatibility with MCP clients that don't support the MCP-UI protocol.
+
+To enable interactive HTML UIs, set the environment variable:
+
+```bash
+SCOUT_ENABLE_UI=true uv run python -m scout_mcp
+```
+
+**With UI disabled (default):**
+- Files return raw text content
+- Directories return `ls -la` output
+- Compatible with all MCP clients
+
+**With UI enabled:**
+- Files display in an interactive viewer with line numbers and syntax highlighting
+- Directories show a clickable file explorer with breadcrumb navigation
+- Log files get level-based highlighting and filtering
+- Markdown files render with live preview
 
 ## UI Components
 

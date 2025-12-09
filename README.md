@@ -21,6 +21,7 @@ export SCOUT_MAX_FILE_SIZE=5242880   # 5MB (default: 1MB)
 export SCOUT_COMMAND_TIMEOUT=60      # seconds (default: 30)
 export SCOUT_IDLE_TIMEOUT=120        # seconds (default: 60)
 export SCOUT_MAX_POOL_SIZE=200       # max connections (default: 100)
+export SCOUT_ENABLE_UI=true          # Enable MCP-UI (default: false)
 
 # Legacy MCP_CAT_* prefix still supported for backward compatibility
 ```
@@ -46,9 +47,11 @@ Add to your Claude Code MCP config:
 }
 ```
 
-## Interactive UI
+## Interactive UI (Optional)
 
-Scout MCP provides interactive UI components for enhanced file browsing:
+Scout MCP provides optional interactive UI components for enhanced file browsing.
+
+**Note:** UI is disabled by default for better MCP client compatibility. To enable, set `SCOUT_ENABLE_UI=true`.
 
 ### File Explorer
 Access any directory to see an interactive file explorer:
