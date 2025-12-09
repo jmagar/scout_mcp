@@ -6,10 +6,11 @@ import time
 from pathlib import Path
 from typing import Any
 
-import mcp_cat.server
 import pytest
 
+import scout_mcp.services.state as state_module
 from scout_mcp.config import Config
+from scout_mcp.tools import scout
 
 
 class MockSSHResult:
@@ -70,10 +71,10 @@ def temp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Config:
         await asyncio.sleep(0.005)
         return MockSSHConnection()
 
-    import mcp_cat.pool
+    import scout_mcp.services.pool as pool_module
 
     monkeypatch.setattr(
-        mcp_cat.pool, "asyncssh", type("", (), {"connect": mock_connect})()
+        pool_module, "asyncssh", type("", (), {"connect": mock_connect})()
     )
 
     return config
@@ -86,12 +87,11 @@ async def test_full_request_latency_cold(
 ) -> None:
     """Benchmark full request latency (cold start)."""
     # Reset global state
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     start = time.perf_counter()
-    result = await mcp_cat.server.scout.fn("host-0:/test/file.txt")
+    result = await scout("host-0:/test/file.txt")
     elapsed = time.perf_counter() - start
 
     print("\n[PERF] Full request (cold start):")
@@ -108,18 +108,17 @@ async def test_full_request_latency_warm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Benchmark full request latency (warm connection)."""
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     # Prime the pool
-    await mcp_cat.server.scout.fn("host-0:/test/file.txt")
+    await scout("host-0:/test/file.txt")
 
     # Measure warm request
     latencies = []
     for _ in range(10):
         start = time.perf_counter()
-        await mcp_cat.server.scout.fn("host-0:/test/file.txt")
+        await scout("host-0:/test/file.txt")
         latencies.append(time.perf_counter() - start)
 
     avg = statistics.mean(latencies) * 1000
@@ -140,15 +139,14 @@ async def test_concurrent_requests_same_host(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Benchmark concurrent requests to same host."""
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     num_requests = 50
 
     async def make_request() -> float:
         start = time.perf_counter()
-        await mcp_cat.server.scout.fn("host-0:/test/file.txt")
+        await scout("host-0:/test/file.txt")
         return time.perf_counter() - start
 
     start_total = time.perf_counter()
@@ -172,15 +170,14 @@ async def test_concurrent_requests_different_hosts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Benchmark concurrent requests to different hosts."""
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     num_hosts = 10
 
     async def make_request(host_id: int) -> float:
         start = time.perf_counter()
-        await mcp_cat.server.scout.fn(f"host-{host_id}:/test/file.txt")
+        await scout(f"host-{host_id}:/test/file.txt")
         return time.perf_counter() - start
 
     start_total = time.perf_counter()
@@ -202,9 +199,8 @@ async def test_mixed_operation_workload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Benchmark mixed operation workload."""
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     operations = [
         "host-0:/test/file.txt",  # cat file
@@ -216,7 +212,7 @@ async def test_mixed_operation_workload(
 
     async def run_workload() -> float:
         start = time.perf_counter()
-        await asyncio.gather(*[mcp_cat.server.scout.fn(op) for op in operations])
+        await asyncio.gather(*[scout(op) for op in operations])
         return time.perf_counter() - start
 
     results = []
@@ -237,14 +233,13 @@ async def test_hosts_command_performance(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Benchmark 'hosts' command performance."""
-
-    mcp_cat.server._config = temp_config
-    mcp_cat.server._pool = None
+    state_module._config = temp_config
+    state_module._pool = None
 
     latencies = []
     for _ in range(100):
         start = time.perf_counter()
-        await mcp_cat.server.scout.fn("hosts")
+        await scout("hosts")
         latencies.append(time.perf_counter() - start)
 
     avg = statistics.mean(latencies) * 1000

@@ -1,0 +1,371 @@
+# Scout MCP
+
+MCP server for remote file operations via SSH. Enables Claude to read files, list directories, and execute commands on remote Linux/Unix systems.
+
+## Quick Reference
+
+```bash
+# Run server (HTTP on 0.0.0.0:8000)
+uv run python -m scout_mcp
+
+# Run server on custom port
+SCOUT_HTTP_PORT=9000 uv run python -m scout_mcp
+
+# Run server on localhost only
+SCOUT_HTTP_HOST=127.0.0.1 uv run python -m scout_mcp
+
+# Run with STDIO transport (for Claude Desktop)
+SCOUT_TRANSPORT=stdio uv run python -m scout_mcp
+
+# Enable MCP-UI interactive HTML responses
+SCOUT_ENABLE_UI=true uv run python -m scout_mcp
+
+# Run tests
+uv run pytest tests/ -v
+
+# Type checking
+uv run mypy scout_mcp/
+
+# Linting
+uv run ruff check scout_mcp/ tests/ --fix
+```
+
+## Architecture
+
+```
+scout_mcp/
+├── server.py          # FastMCP server (thin wrapper, wires components)
+├── config.py          # SSH config parsing, host discovery
+├── __main__.py        # Entry point
+├── models/            # Dataclasses (ScoutTarget, SSHHost, CommandResult)
+├── services/          # Business logic (pool, executors, state)
+├── utils/             # Helpers (parser, ping, mime)
+├── tools/             # MCP tools (scout)
+├── resources/         # MCP resources (scout://, hosts://)
+├── middleware/        # Request/response processing
+└── prompts/           # MCP prompts (placeholder)
+```
+
+## Core Concepts
+
+### Scout Tool
+Primary interface for remote operations:
+```python
+scout("hosts")                           # List available SSH hosts
+scout("hostname:/path")                  # Read file or list directory
+scout("hostname:/path", "grep pattern")  # Execute command
+scout("hostname:/path", tree=True)       # Show directory tree
+scout("shart:/tmp/remote.txt", beam="/tmp/local.txt")  # Upload file
+scout("squirts:/etc/hostname", beam="/tmp/hostname")   # Download file
+
+# Remote-to-remote transfers (auto-optimized when MCP server is an endpoint)
+scout(beam_source="shart:/src/file.txt", beam_target="squirts:/dst/file.txt")
+```
+
+### Transfer Implementation Details
+
+**Remote-to-remote transfers use SFTP streaming:**
+- Opens both source and target SFTP connections simultaneously
+- Streams file data in 64KB chunks
+- No temp files on MCP server (constant memory usage)
+- Works for files of any size
+- Automatic optimization when MCP server is source or target
+
+**Example:**
+```python
+# Both hosts are remote - streams between them
+scout(beam_source="shart:/data/large.db", beam_target="squirts:/backup/large.db")
+
+# MCP server is on shart - optimized to direct upload
+scout(beam_source="shart:/local/file.txt", beam_target="squirts:/remote/file.txt")
+
+# MCP server is on squirts - optimized to direct download
+scout(beam_source="shart:/remote/file.txt", beam_target="squirts:/local/file.txt")
+```
+
+### Resources
+URI-based read-only access:
+- `scout://{host}/{path}` - Read files or list directories
+- `hosts://list` - List hosts with online status
+
+### Connection Pooling
+- One connection per host, reused across requests
+- LRU eviction when pool reaches capacity (default: 100 connections)
+- Automatic idle timeout cleanup (default: 60s)
+- One-retry pattern on connection failure
+
+### SSH Host Discovery
+Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filtering.
+
+## Configuration
+
+### Environment Variables
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_TRANSPORT` | http | Transport protocol: "http" or "stdio" |
+| `SCOUT_HTTP_HOST` | 0.0.0.0 | HTTP server bind address |
+| `SCOUT_HTTP_PORT` | 8000 | HTTP server port |
+| `SCOUT_API_KEYS` | (none) | Comma-separated API keys for authentication |
+| `SCOUT_AUTH_ENABLED` | true | Enable/disable auth (if keys set) |
+| `SCOUT_MAX_FILE_SIZE` | 1048576 | Max file size in bytes (1MB) |
+| `SCOUT_COMMAND_TIMEOUT` | 30 | Command timeout in seconds |
+| `SCOUT_IDLE_TIMEOUT` | 60 | Connection idle timeout (seconds) |
+| `SCOUT_MAX_POOL_SIZE` | 100 | Maximum concurrent SSH connections |
+| `SCOUT_LOG_LEVEL` | DEBUG | Log level (DEBUG, INFO, WARNING, ERROR) |
+| `SCOUT_LOG_PAYLOADS` | false | Enable payload logging |
+| `SCOUT_SLOW_THRESHOLD_MS` | 1000 | Slow request threshold |
+| `SCOUT_INCLUDE_TRACEBACK` | false | Include tracebacks in error logs |
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to SSH known_hosts file |
+| `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown SSH host keys |
+| `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Max requests per minute per client |
+| `SCOUT_RATE_LIMIT_BURST` | 10 | Max burst size |
+| `SCOUT_ENABLE_UI` | false | Enable MCP-UI interactive HTML responses |
+
+Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
+
+### MCP-UI Support
+
+By default, Scout returns **plain text** for file and directory operations. Enable interactive HTML UIs by setting:
+
+```bash
+SCOUT_ENABLE_UI=true uv run python -m scout_mcp
+```
+
+**With UI enabled:**
+- Files display in an interactive viewer with line numbers and syntax highlighting
+- Directories show a clickable file explorer with breadcrumb navigation
+- Supports filtering, navigation, and copy-to-clipboard
+
+**With UI disabled (default):**
+- Files return raw text content
+- Directories return `ls -la` output
+- Better compatibility with MCP clients that don't support MCP-UI
+
+### SSH Host Key Verification
+
+By default, scout_mcp verifies SSH host keys against `~/.ssh/known_hosts` to prevent man-in-the-middle (MITM) attacks.
+
+**Configuration:**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to known_hosts file |
+| `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown host keys |
+
+**Security Warning:** Setting `SCOUT_KNOWN_HOSTS=none` disables host key verification, making connections vulnerable to man-in-the-middle attacks. Only use this in trusted networks or for testing.
+
+**Behavior:**
+- **Default:** Uses `~/.ssh/known_hosts` if it exists, disables verification if not found
+- **Strict mode (default):** Connection fails if host key is unknown or mismatched
+- **Non-strict mode:** Warns but allows connection if host key verification fails
+
+**Example - Disable verification (NOT RECOMMENDED):**
+```bash
+export SCOUT_KNOWN_HOSTS=none
+uv run python -m scout_mcp
+```
+
+**Example - Allow unknown hosts with warning:**
+```bash
+export SCOUT_STRICT_HOST_KEY_CHECKING=false
+uv run python -m scout_mcp
+```
+
+### Rate Limiting
+
+Rate limiting protects the server from abuse by limiting the number of requests per client IP.
+
+**Configuration:**
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Max requests per minute per client |
+| `SCOUT_RATE_LIMIT_BURST` | 10 | Max burst size (tokens) |
+
+**How it works:**
+- Uses token bucket algorithm per client IP
+- Each client gets a bucket that refills at the configured rate
+- Burst allows temporary spikes up to the configured limit
+- Health checks (`/health`) bypass rate limiting
+- Returns 429 status with `Retry-After` header when exceeded
+- Set `SCOUT_RATE_LIMIT_PER_MINUTE=0` to disable
+
+**Example:**
+```bash
+# Allow 120 requests/min with burst of 20
+SCOUT_RATE_LIMIT_PER_MINUTE=120 SCOUT_RATE_LIMIT_BURST=20 uv run python -m scout_mcp
+
+# Disable rate limiting
+SCOUT_RATE_LIMIT_PER_MINUTE=0 uv run python -m scout_mcp
+```
+
+### Logging
+The server provides comprehensive logging for debugging and monitoring:
+
+```bash
+# Run with debug logging
+SCOUT_LOG_LEVEL=DEBUG uv run python -m scout_mcp
+
+# View connection pool events
+# Logs show: connection creation, reuse, cleanup, and failures
+```
+
+**Log events include:**
+- Server startup/shutdown with host counts
+- SSH connection creation and reuse
+- Connection pool cleanup (idle/stale)
+- Connection retry attempts
+- Request timing (via middleware)
+
+### Authentication
+
+Set `SCOUT_API_KEYS` to enable API key authentication:
+
+```bash
+# Single key
+export SCOUT_API_KEYS="your-secret-key-here"
+
+# Multiple keys (comma-separated)
+export SCOUT_API_KEYS="key1,key2,key3"
+
+# Disable auth explicitly (when keys are set)
+export SCOUT_AUTH_ENABLED="false"
+```
+
+Clients must include the key in the `X-API-Key` header. The `/health` endpoint bypasses authentication.
+
+**Security features:**
+- Constant-time key comparison to prevent timing attacks
+- Multiple keys supported for rotation
+- Keys are never logged or exposed
+
+### MCP Client Configuration (HTTP - Default)
+
+**Without authentication:**
+```json
+{
+  "mcpServers": {
+    "scout_mcp": {
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+**With API key authentication:**
+```json
+{
+  "mcpServers": {
+    "scout_mcp": {
+      "url": "http://127.0.0.1:8000/mcp",
+      "headers": {
+        "X-API-Key": "your-secret-key-here"
+      }
+    }
+  }
+}
+```
+
+### MCP Client Configuration (STDIO - Legacy)
+```json
+{
+  "mcpServers": {
+    "scout_mcp": {
+      "command": "uv",
+      "args": ["run", "--directory", "/code/scout_mcp", "python", "-m", "scout_mcp"],
+      "env": {
+        "SCOUT_TRANSPORT": "stdio"
+      }
+    }
+  }
+}
+```
+
+### Health Check Endpoint
+When running with HTTP transport, a health check endpoint is available:
+- **URL:** `GET /health`
+- **Response:** `200 OK` with body `"OK"`
+
+## Development
+
+### Dependencies
+- **fastmcp** >=2.0.0 - MCP server framework
+- **asyncssh** >=2.14.0 - Async SSH client
+- **pytest** >=8.0.0 - Testing
+- **ruff** >=0.4.0 - Linting
+- **mypy** >=1.10.0 - Type checking
+
+### Code Style
+- Python 3.11+, type hints required
+- 88 char line length (Ruff default)
+- f-strings for formatting
+- Async/await for all I/O
+
+### Testing
+- 120+ tests, ~81% coverage
+- `pytest-asyncio` with auto mode
+- Mock SSH connections for unit tests
+
+## Key Patterns
+
+### Global State Singletons
+```python
+from scout_mcp.services import get_config, get_pool
+config = get_config()  # Lazy singleton
+pool = get_pool()      # Lazy singleton
+```
+
+### Error Handling
+- Tools return error strings (never raise)
+- Resources raise `ResourceError`
+- Connection failures: auto-retry once with cleanup
+- Path traversal attempts raise `PathTraversalError`
+
+### Input Validation
+All user input is validated before use:
+- **Path validation**: Blocks `../`, null bytes, and other traversal attempts
+- **Host validation**: Blocks command injection characters (`;`, `|`, `$`, etc.)
+- **Shell quoting**: All paths and arguments are quoted with `shlex.quote()`
+
+### Async-First
+All I/O is async. SSH operations use `asyncssh`, connection pool uses `asyncio.Lock`.
+
+## Module Imports
+
+```python
+# Models
+from scout_mcp.models import ScoutTarget, SSHHost, PooledConnection, CommandResult
+
+# Services
+from scout_mcp.services import get_config, get_pool, ConnectionPool
+from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_path, tree_dir
+
+# Utils
+from scout_mcp.utils import parse_target, check_host_online, get_mime_type
+from scout_mcp.utils.validation import validate_path, validate_host, PathTraversalError
+
+# Tools/Resources
+from scout_mcp.tools import scout
+from scout_mcp.resources import scout_resource, list_hosts_resource
+```
+
+## Security Notes
+
+- **Path traversal protection**: Validates all paths to block `../`, null bytes, and escapes
+- **Host validation**: Blocks command injection attempts in hostnames
+- **Shell quoting**: All paths and commands use `shlex.quote()` for safe shell execution
+- **File size limits**: Prevents memory exhaustion (default: 1MB)
+- **Command timeout**: Prevents hanging operations (default: 30s)
+- **Assumes trusted MCP client**: No authentication on tool endpoints
+
+## Recent Changes
+
+- **Path traversal protection** with comprehensive validation (`validate_path`, `validate_host`)
+- **Security hardening** with null byte detection and malicious input blocking
+- **Comprehensive logging** for MCP client connections, SSH pool, and server lifecycle
+- `SCOUT_LOG_LEVEL` environment variable for configurable log levels
+- **Streamable HTTP transport by default** (was STDIO)
+- Health check endpoint at `/health`
+- Transport configuration via environment variables
+- Middleware stack: ErrorHandling → Timing → Logging
+- Module reorganization: flat → models/services/utils/tools/resources

@@ -3,18 +3,17 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import scout_mcp.server as server_module
 import pytest
 
-# Access the actual function from the FunctionTool wrapper
-scout_fn = server_module.scout.fn
+from scout_mcp.resources import scout_resource
+from scout_mcp.services import reset_state, set_config
+from scout_mcp.tools import scout
 
 
 @pytest.fixture(autouse=True)
 def reset_globals() -> None:
     """Reset global state before each test."""
-    server_module._config = None
-    server_module._pool = None
+    reset_state()
 
 
 @pytest.fixture
@@ -33,15 +32,14 @@ Host testhost
 @pytest.mark.asyncio
 async def test_scout_hosts_lists_available(mock_ssh_config: Path) -> None:
     """scout('hosts') lists available SSH hosts."""
-    with patch.object(server_module, "_config", None):
-        from scout_mcp.config import Config
+    from scout_mcp.config import Config
 
-        server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
-        result = await scout_fn("hosts")
+    result = await scout("hosts")
 
-        assert "testhost" in result
-        assert "testuser@192.168.1.100" in result
+    assert "testhost" in result
+    assert "testuser@192.168.1.100" in result
 
 
 @pytest.mark.asyncio
@@ -49,9 +47,9 @@ async def test_scout_unknown_host_returns_error() -> None:
     """scout with unknown host returns helpful error."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=Path("/nonexistent"))
+    set_config(Config(ssh_config_path=Path("/nonexistent")))
 
-    result = await scout_fn("unknownhost:/path")
+    result = await scout("unknownhost:/path")
 
     assert "Error" in result
     assert "Unknown host" in result
@@ -60,7 +58,7 @@ async def test_scout_unknown_host_returns_error() -> None:
 @pytest.mark.asyncio
 async def test_scout_invalid_target_returns_error() -> None:
     """scout with invalid target returns error."""
-    result = await scout_fn("invalid-no-colon")
+    result = await scout("invalid-no-colon")
 
     assert "Error" in result
     assert "Invalid target" in result
@@ -71,7 +69,7 @@ async def test_scout_cat_file(mock_ssh_config: Path) -> None:
     """scout with file path cats the file."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -85,7 +83,7 @@ async def test_scout_cat_file(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        result = await scout_fn("testhost:/etc/hosts")
+        result = await scout("testhost:/etc/hosts")
 
         assert result == "file contents here"
 
@@ -95,7 +93,7 @@ async def test_scout_ls_directory(mock_ssh_config: Path) -> None:
     """scout with directory path lists contents."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -109,7 +107,7 @@ async def test_scout_ls_directory(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        result = await scout_fn("testhost:/var/log")
+        result = await scout("testhost:/var/log")
 
         assert "file1.txt" in result
         assert "file2.txt" in result
@@ -120,7 +118,7 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
     """scout with query runs the command."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -131,9 +129,76 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        result = await scout_fn("testhost:~/code", "rg 'TODO'")
+        result = await scout("testhost:~/code", "rg 'TODO'")
 
         assert "TODO: fix this" in result
+
+
+@pytest.mark.asyncio
+async def test_scout_find_files(mock_ssh_config: Path) -> None:
+    """scout with find parameter searches for files."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(
+        stdout="/home/user/file1.py\n/home/user/subdir/file2.py", returncode=0
+    )
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        result = await scout("testhost:/home/user", find="*.py")
+
+        assert "file1.py" in result
+        assert "file2.py" in result
+        # Verify find command was called
+        call_args = mock_conn.run.call_args[0][0]
+        assert "find" in call_args
+        assert "*.py" in call_args
+
+
+@pytest.mark.asyncio
+async def test_scout_find_respects_depth(mock_ssh_config: Path) -> None:
+    """scout find respects depth parameter."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(stdout="", returncode=0)
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        await scout("testhost:/home/user", find="*.py", depth=2)
+
+        # Verify maxdepth parameter was passed
+        call_args = mock_conn.run.call_args[0][0]
+        assert "-maxdepth 2" in call_args
+
+
+@pytest.mark.asyncio
+async def test_scout_find_empty_results(mock_ssh_config: Path) -> None:
+    """scout find returns message when no files found."""
+    from scout_mcp.config import Config
+
+    set_config(Config(ssh_config_path=mock_ssh_config))
+
+    mock_conn = AsyncMock()
+    mock_conn.is_closed = False
+    mock_conn.run.return_value = MagicMock(stdout="", returncode=0)
+
+    with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
+        mock_connect.return_value = mock_conn
+
+        result = await scout("testhost:/home/user", find="*.nonexistent")
+
+        assert "No files matching" in result
+        assert "*.nonexistent" in result
 
 
 def test_hosts_resource_exists() -> None:
@@ -154,16 +219,12 @@ async def test_scout_resource_template_exists() -> None:
     assert "scout://{host}/{path*}" in templates
 
 
-# Access the actual function from the resource template
-scout_resource_fn = server_module.scout_resource.fn
-
-
 @pytest.mark.asyncio
 async def test_scout_resource_reads_file(mock_ssh_config: Path) -> None:
     """scout resource reads file contents."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -177,7 +238,7 @@ async def test_scout_resource_reads_file(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        result = await scout_resource_fn("testhost", "etc/hosts")
+        result = await scout_resource("testhost", "etc/hosts")
 
         assert result == "file contents from resource"
 
@@ -187,7 +248,7 @@ async def test_scout_resource_lists_directory(mock_ssh_config: Path) -> None:
     """scout resource lists directory contents."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -201,7 +262,7 @@ async def test_scout_resource_lists_directory(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        result = await scout_resource_fn("testhost", "etc/nginx")
+        result = await scout_resource("testhost", "etc/nginx")
 
         assert "nginx" in result
 
@@ -213,10 +274,10 @@ async def test_scout_resource_unknown_host_raises() -> None:
 
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=Path("/nonexistent"))
+    set_config(Config(ssh_config_path=Path("/nonexistent")))
 
     with pytest.raises(ResourceError, match="Unknown host"):
-        await scout_resource_fn("unknownhost", "etc/hosts")
+        await scout_resource("unknownhost", "etc/hosts")
 
 
 @pytest.mark.asyncio
@@ -226,7 +287,7 @@ async def test_scout_resource_path_not_found_raises(mock_ssh_config: Path) -> No
 
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -238,7 +299,7 @@ async def test_scout_resource_path_not_found_raises(mock_ssh_config: Path) -> No
         mock_connect.return_value = mock_conn
 
         with pytest.raises(ResourceError, match="Path not found"):
-            await scout_resource_fn("testhost", "nonexistent/path")
+            await scout_resource("testhost", "nonexistent/path")
 
 
 @pytest.mark.asyncio
@@ -246,7 +307,7 @@ async def test_scout_resource_normalizes_path(mock_ssh_config: Path) -> None:
     """scout resource adds leading slash to paths."""
     from scout_mcp.config import Config
 
-    server_module._config = Config(ssh_config_path=mock_ssh_config)
+    set_config(Config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -260,7 +321,7 @@ async def test_scout_resource_normalizes_path(mock_ssh_config: Path) -> None:
     with patch("asyncssh.connect", new_callable=AsyncMock) as mock_connect:
         mock_connect.return_value = mock_conn
 
-        await scout_resource_fn("testhost", "var/log/syslog")
+        await scout_resource("testhost", "var/log/syslog")
 
         # Verify the stat command was called with /var/log/syslog
         first_call = mock_conn.run.call_args_list[0]

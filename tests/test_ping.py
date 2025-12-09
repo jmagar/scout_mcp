@@ -1,10 +1,12 @@
 """Tests for host connectivity checking."""
 
+import asyncio
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scout_mcp.ping import check_host_online, check_hosts_online
+from scout_mcp.utils.ping import check_host_online, check_hosts_online
 
 
 @pytest.mark.asyncio
@@ -59,3 +61,36 @@ async def test_check_hosts_online_multiple() -> None:
 
         assert results["online_host"] is True
         assert results["offline_host"] is False
+
+
+@pytest.mark.asyncio
+async def test_check_hosts_online_runs_concurrently() -> None:
+    """Verify hosts are checked concurrently, not sequentially."""
+    # Each check takes 0.1s - if sequential, 3 hosts = 0.3s+
+    # If concurrent, should complete in ~0.1s
+    delay_per_host = 0.1
+
+    async def slow_check(host: str, port: int) -> tuple:
+        await asyncio.sleep(delay_per_host)
+        mock_writer = MagicMock()
+        mock_writer.close = MagicMock()
+        mock_writer.wait_closed = AsyncMock()
+        return (MagicMock(), mock_writer)
+
+    with patch("asyncio.open_connection", side_effect=slow_check):
+        hosts = {
+            "host1": ("192.168.1.1", 22),
+            "host2": ("192.168.1.2", 22),
+            "host3": ("192.168.1.3", 22),
+        }
+
+        start = time.perf_counter()
+        results = await check_hosts_online(hosts)
+        elapsed = time.perf_counter() - start
+
+        # Should complete in ~0.1s if concurrent, not 0.3s+ if sequential
+        assert elapsed < delay_per_host * 2, (
+            f"Expected concurrent execution (<0.2s), got {elapsed:.2f}s"
+        )
+        assert len(results) == 3
+        assert all(results.values())

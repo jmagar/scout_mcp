@@ -3,8 +3,9 @@
 import asyncio
 import tracemalloc
 
-from scout_mcp.config import SSHHost
 from scout_mcp.pool import ConnectionPool
+
+from scout_mcp.models import SSHHost
 
 
 class MockSSHConnection:

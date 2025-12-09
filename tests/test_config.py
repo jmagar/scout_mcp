@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from scout_mcp.config import Config
 
 
@@ -170,17 +172,49 @@ def test_unreadable_config_file_treated_as_empty(tmp_path: Path) -> None:
         ssh_config.chmod(0o644)
 
 
-def test_env_vars_override_defaults(tmp_path: Path, monkeypatch) -> None:
-    """Environment variables override default config values."""
-    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "5242880")
-    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "60")
-    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "120")
+def test_env_vars_override_defaults_with_scout_prefix(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Environment variables with SCOUT_ prefix override default config values."""
+    monkeypatch.setenv("SCOUT_MAX_FILE_SIZE", "5242880")
+    monkeypatch.setenv("SCOUT_COMMAND_TIMEOUT", "60")
+    monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
 
     config = Config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 5242880
     assert config.command_timeout == 60
     assert config.idle_timeout == 120
+
+
+def test_legacy_mcp_cat_env_vars_still_work(tmp_path: Path, monkeypatch) -> None:
+    """Legacy MCP_CAT_* env vars still work for backward compatibility."""
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "2097152")
+    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "45")
+    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "90")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 2097152
+    assert config.command_timeout == 45
+    assert config.idle_timeout == 90
+
+
+def test_scout_prefix_takes_precedence_over_legacy(tmp_path: Path, monkeypatch) -> None:
+    """SCOUT_* env vars take precedence over legacy MCP_CAT_* vars."""
+    # Set both legacy and new
+    monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "1000000")
+    monkeypatch.setenv("SCOUT_MAX_FILE_SIZE", "2000000")
+    monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "30")
+    monkeypatch.setenv("SCOUT_COMMAND_TIMEOUT", "60")
+    monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "60")
+    monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
+
+    config = Config(ssh_config_path=tmp_path / "nonexistent")
+
+    assert config.max_file_size == 2000000  # SCOUT_ wins
+    assert config.command_timeout == 60  # SCOUT_ wins
+    assert config.idle_timeout == 120  # SCOUT_ wins
 
 
 def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:
@@ -190,3 +224,95 @@ def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:
     config = Config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 1_048_576  # default
+
+
+class TestTransportConfig:
+    """Tests for transport configuration."""
+
+    def test_default_transport_is_http(self, tmp_path: Path) -> None:
+        """Default transport should be http."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "http"
+
+    def test_default_host_is_all_interfaces(self, tmp_path: Path) -> None:
+        """Default host should be 0.0.0.0 (all interfaces)."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_host == "0.0.0.0"
+
+    def test_default_port_is_8000(self, tmp_path: Path) -> None:
+        """Default port should be 8000."""
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 8000
+
+    def test_transport_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Transport can be set via SCOUT_TRANSPORT env var."""
+        monkeypatch.setenv("SCOUT_TRANSPORT", "stdio")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "stdio"
+
+    def test_host_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Host can be set via SCOUT_HTTP_HOST env var."""
+        monkeypatch.setenv("SCOUT_HTTP_HOST", "127.0.0.1")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_host == "127.0.0.1"
+
+    def test_port_from_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Port can be set via SCOUT_HTTP_PORT env var."""
+        monkeypatch.setenv("SCOUT_HTTP_PORT", "9000")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 9000
+
+    def test_invalid_port_uses_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Invalid port value falls back to default."""
+        monkeypatch.setenv("SCOUT_HTTP_PORT", "not-a-number")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.http_port == 8000
+
+    def test_invalid_transport_uses_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Invalid transport value falls back to http."""
+        monkeypatch.setenv("SCOUT_TRANSPORT", "invalid")
+        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        assert config.transport == "http"
+
+
+def test_config_marks_localhost_hosts(tmp_path: Path) -> None:
+    """Config should mark hosts matching server hostname as localhost."""
+    from scout_mcp.utils.hostname import get_server_hostname
+
+    config_content = f"""
+Host {get_server_hostname()}
+    HostName tootie.example.com
+    User root
+    Port 29229
+
+Host remote
+    HostName remote.example.com
+    User admin
+    Port 22
+"""
+
+    config = Config()
+    config.ssh_config_path = tmp_path / "ssh_config"
+    config.ssh_config_path.write_text(config_content)
+
+    hosts = config.get_hosts()
+
+    # Server hostname should be marked as localhost
+    server_host = hosts.get(get_server_hostname())
+    assert server_host is not None
+    assert server_host.is_localhost is True
+
+    # Remote host should not be localhost
+    remote_host = hosts.get("remote")
+    assert remote_host is not None
+    assert remote_host.is_localhost is False

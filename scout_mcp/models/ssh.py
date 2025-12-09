@@ -17,6 +17,25 @@ class SSHHost:
     user: str = "root"
     port: int = 22
     identity_file: str | None = None
+    is_localhost: bool = False
+
+    @property
+    def connection_hostname(self) -> str:
+        """Get the hostname to use for SSH connection.
+
+        Returns:
+            127.0.0.1 if is_localhost, otherwise original hostname
+        """
+        return "127.0.0.1" if self.is_localhost else self.hostname
+
+    @property
+    def connection_port(self) -> int:
+        """Get the port to use for SSH connection.
+
+        Returns:
+            22 if is_localhost, otherwise original port
+        """
+        return 22 if self.is_localhost else self.port
 
 
 @dataclass

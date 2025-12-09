@@ -1,0 +1,131 @@
+Scout MCP Executor Research - File Tree
+========================================
+
+Source Files Analyzed:
+----------------------
+
+scout_mcp/
+├── services/
+│   ├── executors.py (643 lines) ★★★★★
+│   │   ├── Core Executors (5)
+│   │   │   ├── stat_path() - Path type detection
+│   │   │   ├── cat_file() - File reading with size limits
+│   │   │   ├── ls_dir() - Directory listings
+│   │   │   ├── tree_dir() - Tree view with fallback
+│   │   │   └── run_command() - Arbitrary command execution
+│   │   │
+│   │   └── Extended Executors (13)
+│   │       ├── Docker (4): docker_logs, docker_ps, docker_inspect, ...
+│   │       ├── Compose (3): compose_ls, compose_config, compose_logs
+│   │       ├── ZFS (5): zfs_check, zfs_pools, zfs_datasets, ...
+│   │       └── Syslog (1): syslog_read
+│   │
+│   ├── pool.py (171 lines) ★★★★
+│   │   └── ConnectionPool - SSH connection lifecycle
+│   │       ├── get_connection() - Reuse or create
+│   │       ├── remove_connection() - Clean stale
+│   │       ├── _cleanup_loop() - Background task
+│   │       └── _cleanup_idle() - Periodic cleanup
+│   │
+│   └── state.py ★★★
+│       ├── get_config() - Singleton pattern
+│       └── get_pool() - Singleton pattern
+│
+├── models/
+│   ├── command.py - CommandResult dataclass
+│   ├── ssh.py - SSHHost, PooledConnection
+│   └── target.py - ScoutTarget
+│
+├── tools/
+│   └── scout.py (147 lines) ★★★★
+│       └── scout() - Primary tool using executors
+│           ├── Uses: stat_path, cat_file, ls_dir, tree_dir, run_command
+│           └── Pattern: Always return string (never raise)
+│
+├── resources/
+│   ├── scout.py (92 lines) ★★★
+│   │   └── scout_resource() - URI-based access
+│   │       ├── Uses: stat_path, cat_file, ls_dir
+│   │       └── Pattern: Raise ResourceError on failure
+│   │
+│   └── hosts.py - Host listing resource
+│
+└── config.py (184 lines) ★★★★
+    └── Config - Environment variable parsing
+        ├── max_file_size (default: 1MB)
+        ├── command_timeout (default: 30s)
+        └── idle_timeout (default: 60s)
+
+tests/
+└── test_executors.py (180 lines) ★★★
+    └── Unit tests for core executors
+
+Research Documents Generated:
+------------------------------
+
+plans/executor-analysis/
+├── README.md (226 lines)
+│   └── Executive summary and quick reference
+│
+├── executor-implementations.docs.md (403 lines)
+│   ├── Detailed analysis of all 18 executors
+│   ├── Input/output patterns
+│   ├── Error handling strategies (5 patterns)
+│   ├── Timeout and size limit enforcement
+│   └── Critical edge cases and gotchas
+│
+├── architecture-flow.docs.md (434 lines)
+│   ├── High-level architecture diagram
+│   ├── Request flow diagrams (3 scenarios)
+│   ├── Connection lifecycle
+│   ├── Error propagation patterns
+│   ├── Configuration flow
+│   └── Thread safety model
+│
+├── implementation-examples.docs.md (722 lines)
+│   ├── 10 detailed usage patterns with code
+│   ├── Binary file detection
+│   ├── Docker/ZFS/syslog integration
+│   ├── Parallel executor calls
+│   └── Common pitfalls and solutions (6)
+│
+└── RESEARCH_TREE.txt (this file)
+
+Legend:
+-------
+★★★★★ = Critical (core executor implementations)
+★★★★  = Important (pool, tools, config)
+★★★   = Supporting (state, resources, tests)
+
+Key Metrics:
+------------
+Source files analyzed: 12 files (~1,400 lines)
+Executors documented: 18 (5 core + 13 extended)
+Error patterns identified: 5 distinct strategies
+Test coverage: 120+ tests, ~81% coverage
+Documentation generated: 1,785 lines across 4 files
+
+Critical Findings:
+------------------
+1. Connection pooling: One connection per host, reused across requests
+2. Timeout handling: Only run_command (via shell timeout, not asyncio)
+3. Size limits: Server-side enforcement using head -c
+4. Error strategies: Return None | Raise | Always return result | Graceful fallback | Silent failure
+5. Concurrency: SSH multiplexing allows parallel commands on same connection
+6. Security: No path traversal protection, relies on SSH server ACLs
+
+Implementation Patterns:
+------------------------
+1. Always check stat_path before cat_file
+2. Connection retry: fail → remove → retry once
+3. Handle truncation flag from cat_file
+4. Check exit code 124 for timeouts
+5. Use connection pool (never create connections directly)
+6. Quote user input in run_command to prevent injection
+
+Next Steps for Features:
+-------------------------
+1. Review implementation-examples.docs.md for code patterns
+2. Check architecture-flow.docs.md for system design
+3. Use executor-implementations.docs.md for detailed behavior
+4. Reference README.md for quick lookup and gotchas
