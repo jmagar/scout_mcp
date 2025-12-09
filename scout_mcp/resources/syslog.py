@@ -4,8 +4,9 @@ from typing import Any
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
+from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import syslog_read
+from scout_mcp.services.validation import validate_host
 from scout_mcp.ui import create_log_viewer_ui
 
 
@@ -22,13 +23,8 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
     Returns:
         HTML string with log viewer interface
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:

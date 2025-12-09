@@ -69,7 +69,7 @@ def validate_path(path: str, allow_absolute: bool = True) -> str:
     return normalized
 
 
-def validate_host(host: str) -> str:
+def validate_host_format(host: str) -> str:
     """Validate a host name.
 
     Args:
@@ -95,3 +95,4 @@ def validate_host(host: str) -> str:
             raise ValueError(f"Host contains invalid characters: {host!r}")
 
     return host
+

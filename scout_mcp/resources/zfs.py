@@ -2,7 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
+from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import (
     zfs_check,
     zfs_datasets,
@@ -10,6 +10,7 @@ from scout_mcp.services.executors import (
     zfs_pools,
     zfs_snapshots,
 )
+from scout_mcp.services.validation import validate_host
 
 
 async def zfs_overview_resource(host: str) -> str:
@@ -21,13 +22,8 @@ async def zfs_overview_resource(host: str) -> str:
     Returns:
         Formatted ZFS overview with pools and usage.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:
@@ -87,13 +83,8 @@ async def zfs_pool_resource(host: str, pool_name: str) -> str:
     Returns:
         Pool status output.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:
@@ -131,13 +122,8 @@ async def zfs_datasets_resource(host: str, pool_name: str) -> str:
     Returns:
         Formatted dataset list.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:
@@ -191,13 +177,8 @@ async def zfs_snapshots_resource(host: str) -> str:
     Returns:
         Formatted snapshot list.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:

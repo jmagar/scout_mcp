@@ -1,7 +1,7 @@
 """Scout target URI parsing."""
 
 from scout_mcp.models import ScoutTarget
-from scout_mcp.utils.validation import validate_host, validate_path
+from scout_mcp.utils.validation import validate_host_format, validate_path
 
 
 def parse_target(target: str) -> ScoutTarget:
@@ -34,7 +34,7 @@ def parse_target(target: str) -> ScoutTarget:
     path = parts[1].strip() if len(parts) > 1 else ""
 
     # Validate host
-    host = validate_host(host)
+    host = validate_host_format(host)
 
     # Validate path
     if not path:

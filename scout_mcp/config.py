@@ -8,7 +8,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from scout_mcp.models import SSHHost
-from scout_mcp.utils import is_localhost_target
+from scout_mcp.utils.hostname import is_localhost_target
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,8 @@ class Config:
     transport: str = "http"  # "http" or "stdio"
     http_host: str = "0.0.0.0"
     http_port: int = 8000
+    # UI configuration
+    enable_ui: bool = False  # Enable MCP-UI interactive HTML responses
 
     _hosts: dict[str, SSHHost] = field(default_factory=dict, init=False, repr=False)
     _parsed: bool = field(default=False, init=False, repr=False)
@@ -89,6 +91,10 @@ class Config:
         http_port = get_env_int("SCOUT_HTTP_PORT", "")
         if http_port is not None:
             self.http_port = http_port
+
+        # UI configuration
+        if ui_enabled := os.getenv("SCOUT_ENABLE_UI", "").lower():
+            self.enable_ui = ui_enabled in ("true", "1", "yes", "on")
 
         logger.debug(
             "Config initialized: transport=%s, max_file_size=%d, "

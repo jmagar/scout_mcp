@@ -4,7 +4,7 @@ import pytest
 
 from scout_mcp.utils.validation import (
     PathTraversalError,
-    validate_host,
+    validate_host_format,
     validate_path,
 )
 
@@ -104,99 +104,99 @@ class TestValidateHost:
 
     def test_simple_host(self):
         """Test validating a simple hostname."""
-        assert validate_host("myserver") == "myserver"
+        assert validate_host_format("myserver") == "myserver"
 
     def test_host_with_domain(self):
         """Test validating a fully qualified domain name."""
-        assert validate_host("server.example.com") == "server.example.com"
+        assert validate_host_format("server.example.com") == "server.example.com"
 
     def test_host_with_subdomain(self):
         """Test validating hosts with multiple subdomains."""
-        assert validate_host("web.prod.example.com") == "web.prod.example.com"
+        assert validate_host_format("web.prod.example.com") == "web.prod.example.com"
 
     def test_host_with_hyphen(self):
         """Test that hyphens in hostnames are allowed."""
-        assert validate_host("web-server-01") == "web-server-01"
+        assert validate_host_format("web-server-01") == "web-server-01"
 
     def test_host_with_numbers(self):
         """Test that numbers in hostnames are allowed."""
-        assert validate_host("server123") == "server123"
+        assert validate_host_format("server123") == "server123"
 
     def test_ip_address(self):
         """Test that IP addresses are valid hosts."""
-        assert validate_host("192.168.1.100") == "192.168.1.100"
+        assert validate_host_format("192.168.1.100") == "192.168.1.100"
 
     def test_ipv6_address(self):
         """Test that IPv6 addresses are valid hosts."""
         # Note: colons are NOT in suspicious_chars for host validation
         # because they're needed for IPv6 and port specs handled elsewhere
-        assert validate_host("2001:db8::1") == "2001:db8::1"
+        assert validate_host_format("2001:db8::1") == "2001:db8::1"
 
     def test_empty_host(self):
         """Test that empty hosts are rejected."""
         with pytest.raises(ValueError, match="Host cannot be empty"):
-            validate_host("")
+            validate_host_format("")
 
     def test_host_too_long(self):
         """Test that excessively long hostnames are rejected."""
         long_host = "a" * 254
         with pytest.raises(ValueError, match="Host name too long"):
-            validate_host(long_host)
+            validate_host_format(long_host)
 
     def test_host_max_length(self):
         """Test that 253 character hostnames are allowed."""
         max_host = "a" * 253
-        assert validate_host(max_host) == max_host
+        assert validate_host_format(max_host) == max_host
 
     def test_host_with_slash(self):
         """Test that slashes are rejected (path injection)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server/path")
+            validate_host_format("server/path")
 
     def test_host_with_semicolon(self):
         """Test that semicolons are rejected (command injection)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server;rm -rf /")
+            validate_host_format("server;rm -rf /")
 
     def test_host_with_pipe(self):
         """Test that pipes are rejected (command injection)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server|cat /etc/passwd")
+            validate_host_format("server|cat /etc/passwd")
 
     def test_host_with_ampersand(self):
         """Test that ampersands are rejected (command injection)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server&background")
+            validate_host_format("server&background")
 
     def test_host_with_dollar(self):
         """Test that dollar signs are rejected (variable expansion)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server$VAR")
+            validate_host_format("server$VAR")
 
     def test_host_with_backtick(self):
         """Test that backticks are rejected (command substitution)."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server`whoami`")
+            validate_host_format("server`whoami`")
 
     def test_host_with_newline(self):
         """Test that newlines are rejected."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server\nmalicious")
+            validate_host_format("server\nmalicious")
 
     def test_host_with_carriage_return(self):
         """Test that carriage returns are rejected."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server\rmalicious")
+            validate_host_format("server\rmalicious")
 
     def test_host_with_null_byte(self):
         """Test that null bytes are rejected."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server\x00malicious")
+            validate_host_format("server\x00malicious")
 
     def test_host_with_backslash(self):
         """Test that backslashes are rejected."""
         with pytest.raises(ValueError, match="invalid characters"):
-            validate_host("server\\path")
+            validate_host_format("server\\path")
 
 
 class TestPathTraversalError:

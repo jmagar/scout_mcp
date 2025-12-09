@@ -5,7 +5,7 @@ import shlex
 import pytest
 
 from scout_mcp.utils.shell import quote_arg, quote_path
-from scout_mcp.utils.validation import PathTraversalError, validate_host, validate_path
+from scout_mcp.utils.validation import PathTraversalError, validate_host_format, validate_path
 
 
 class TestShellQuoting:
@@ -196,31 +196,31 @@ class TestHostValidation:
     def test_rejects_command_injection_in_host(self):
         """Test that command injection in host is blocked."""
         with pytest.raises(ValueError):
-            validate_host("host;rm -rf /")
+            validate_host_format("host;rm -rf /")
 
     def test_rejects_pipe_in_host(self):
         """Test that pipes in host are blocked."""
         with pytest.raises(ValueError):
-            validate_host("host|cat /etc/passwd")
+            validate_host_format("host|cat /etc/passwd")
 
     def test_rejects_dollar_expansion_in_host(self):
         """Test that variable expansion in host is blocked."""
         with pytest.raises(ValueError):
-            validate_host("host$VAR")
+            validate_host_format("host$VAR")
 
     def test_rejects_backtick_substitution_in_host(self):
         """Test that command substitution in host is blocked."""
         with pytest.raises(ValueError):
-            validate_host("host`whoami`")
+            validate_host_format("host`whoami`")
 
     def test_accepts_normal_hostname(self):
         """Test that normal hostnames are accepted."""
-        assert validate_host("myserver") == "myserver"
+        assert validate_host_format("myserver") == "myserver"
 
     def test_accepts_fqdn(self):
         """Test that FQDNs are accepted."""
-        assert validate_host("server.example.com") == "server.example.com"
+        assert validate_host_format("server.example.com") == "server.example.com"
 
     def test_accepts_ip_address(self):
         """Test that IP addresses are accepted."""
-        assert validate_host("192.168.1.100") == "192.168.1.100"
+        assert validate_host_format("192.168.1.100") == "192.168.1.100"

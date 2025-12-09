@@ -11,6 +11,7 @@ from scout_mcp.services import (
     get_connection_with_retry,
 )
 from scout_mcp.services.executors import cat_file, ls_dir, stat_path
+from scout_mcp.services.validation import validate_host
 from scout_mcp.ui import (
     create_directory_ui,
     create_file_viewer_ui,
@@ -101,10 +102,7 @@ async def scout_resource(host: str, path: str) -> str | dict[str, Any]:
     config = get_config()
 
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Normalize path - add leading slash if not present
     normalized_path = f"/{path}" if not path.startswith("/") else path

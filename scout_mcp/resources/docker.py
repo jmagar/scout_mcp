@@ -4,8 +4,9 @@ from typing import Any
 
 from fastmcp.exceptions import ResourceError
 
-from scout_mcp.services import ConnectionError, get_config, get_connection_with_retry
+from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import docker_logs, docker_ps
+from scout_mcp.services.validation import validate_host
 from scout_mcp.ui import create_log_viewer_ui
 
 
@@ -22,13 +23,8 @@ async def docker_logs_resource(host: str, container: str) -> str:
     Raises:
         ResourceError: If host unknown, connection fails, or container not found.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection (with one retry on failure)
     try:
@@ -68,13 +64,8 @@ async def docker_list_resource(host: str) -> str:
     Returns:
         Formatted list of containers with status.
     """
-    config = get_config()
-
     # Validate host exists
-    ssh_host = config.get_host(host)
-    if ssh_host is None:
-        available = ", ".join(sorted(config.get_hosts().keys()))
-        raise ResourceError(f"Unknown host '{host}'. Available: {available}")
+    ssh_host = validate_host(host)
 
     # Get connection
     try:

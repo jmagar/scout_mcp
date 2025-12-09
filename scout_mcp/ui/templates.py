@@ -1,55 +1,169 @@
 # ruff: noqa: E501
 """HTML templates for UI resources."""
 
+import re
 
-def get_base_styles() -> str:
-    """Get base CSS styles for all UI components.
+
+def minify_html(html: str) -> str:
+    """Minify HTML by removing unnecessary whitespace.
+
+    Removes:
+    - Comments (except IE conditional comments)
+    - Whitespace between tags
+    - Multiple consecutive spaces
+    - Leading/trailing whitespace
+
+    Preserves:
+    - Whitespace inside <pre>, <script>, <style> tags
+    - Attribute values
+    - Tag structure
+
+    Args:
+        html: HTML string to minify
 
     Returns:
-        CSS string with Tailwind-like utility classes
+        Minified HTML string (typically 30-40% smaller)
+    """
+    # Remove HTML comments (but preserve IE conditional comments)
+    html = re.sub(r'<!--(?!\[if\s).*?-->', '', html, flags=re.DOTALL)
+
+    # Collapse multiple spaces/tabs/newlines to single space (but preserve in pre/script/style)
+    html = re.sub(r'[ \t]+', ' ', html)  # Collapse horizontal whitespace
+    html = re.sub(r'\n\s*', '\n', html)  # Remove leading whitespace on lines
+    html = re.sub(r'\n+', '\n', html)    # Collapse multiple newlines
+
+    # Remove whitespace between tags (but not inside tags)
+    html = re.sub(r'>\s+<', '><', html)
+
+    # Remove leading/trailing whitespace
+    html = html.strip()
+
+    return html
+
+
+def get_base_styles() -> str:
+    """Get base CSS styles inspired by shadcn/ui design.
+
+    Returns:
+        CSS string with shadcn-like styling
     """
     return """
     <style>
+        /* shadcn/ui inspired design tokens */
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 221.2 83.2% 53.3%;
+            --radius: 0.5rem;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
             font-size: 14px;
             line-height: 1.5;
-            color: #333;
-            background: #fff;
-            padding: 16px;
+            color: hsl(var(--foreground));
+            background: hsl(var(--background));
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+
         .container { max-width: 1200px; margin: 0 auto; }
+
         .header {
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 12px;
-            margin-bottom: 16px;
+            border-bottom: 1px solid hsl(var(--border));
+            padding-bottom: 16px;
+            margin-bottom: 24px;
         }
-        .title { font-size: 18px; font-weight: 600; color: #111; }
-        .subtitle { font-size: 12px; color: #6b7280; margin-top: 4px; }
-        .content { padding: 12px 0; }
-        button {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px 16px;
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+            color: hsl(var(--foreground));
+        }
+
+        .subtitle {
             font-size: 14px;
-            cursor: pointer;
+            color: hsl(var(--muted-foreground));
+            margin-top: 4px;
         }
-        button:hover { background: #2563eb; }
+
+        .content { padding: 12px 0; }
+
+        /* shadcn button styles */
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 150ms ease;
+            border: none;
+            border-radius: var(--radius);
+            padding: 8px 16px;
+            height: 40px;
+            cursor: pointer;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
+        button:hover {
+            background: hsl(221.2 83.2% 48%);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* shadcn secondary button */
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--secondary) / 0.8);
+        }
+
+        /* shadcn input styles */
         input[type="text"] {
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
+            display: flex;
+            width: 100%;
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--input));
+            background: hsl(var(--background));
             padding: 8px 12px;
             font-size: 14px;
-            width: 100%;
-            max-width: 400px;
+            color: hsl(var(--foreground));
+            transition: all 150ms ease;
         }
+
         input[type="text"]:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-color: transparent;
+            box-shadow: 0 0 0 2px hsl(var(--ring));
+        }
+
+        input[type="text"]::placeholder {
+            color: hsl(var(--muted-foreground));
         }
     </style>
     """
@@ -85,8 +199,11 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
         is_dir = permissions.startswith("d")
         icon = "📁" if is_dir else "📄"
 
+        # Construct full path for navigation
+        new_path = f"{path.rstrip('/')}/{name}"
+
         entries_html.append(f"""
-        <tr class="entry" data-name="{name}" data-type="{'dir' if is_dir else 'file'}">
+        <tr class="entry clickable" data-name="{name}" data-type="{'dir' if is_dir else 'file'}" onclick="navigateToPath('{host}', '{new_path}', {'true' if is_dir else 'false'})">
             <td class="icon">{icon}</td>
             <td class="name">{name}</td>
             <td class="size">{size if not is_dir else '-'}</td>
@@ -101,7 +218,7 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
         </td></tr>
     """
 
-    return f"""
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -110,43 +227,105 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
         <title>Directory: {host}:{path}</title>
         {get_base_styles()}
         <style>
+            /* shadcn breadcrumb styles */
+            .breadcrumb {{
+                margin-bottom: 16px;
+                padding: 12px 16px;
+                background: hsl(var(--muted) / 0.5);
+                border: 1px solid hsl(var(--border));
+                border-radius: var(--radius);
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                flex-wrap: wrap;
+            }}
+            .breadcrumb-item {{
+                color: hsl(var(--primary));
+                cursor: pointer;
+                text-decoration: none;
+                padding: 4px 8px;
+                border-radius: calc(var(--radius) - 2px);
+                transition: all 150ms ease;
+                font-weight: 500;
+            }}
+            .breadcrumb-item:hover {{
+                background: hsl(var(--primary) / 0.1);
+            }}
+            .breadcrumb-separator {{
+                color: hsl(var(--muted-foreground));
+                margin: 0 4px;
+                font-weight: 400;
+            }}
+            .breadcrumb-current {{
+                color: hsl(var(--foreground));
+                font-weight: 600;
+                padding: 4px 8px;
+            }}
             .search-box {{
                 margin-bottom: 16px;
                 display: flex;
                 gap: 8px;
                 align-items: center;
             }}
+            /* shadcn table styles */
             table {{
                 width: 100%;
                 border-collapse: collapse;
-                background: white;
-                border: 1px solid #e5e7eb;
-                border-radius: 6px;
+                background: hsl(var(--card));
+                border: 1px solid hsl(var(--border));
+                border-radius: var(--radius);
                 overflow: hidden;
+                box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
             }}
             th {{
-                background: #f9fafb;
-                padding: 12px;
+                background: hsl(var(--muted));
+                padding: 12px 16px;
                 text-align: left;
                 font-weight: 600;
-                color: #374151;
-                border-bottom: 1px solid #e5e7eb;
+                font-size: 13px;
+                color: hsl(var(--muted-foreground));
+                border-bottom: 1px solid hsl(var(--border));
+                letter-spacing: 0.025em;
+                text-transform: uppercase;
             }}
             td {{
-                padding: 10px 12px;
-                border-bottom: 1px solid #f3f4f6;
+                padding: 12px 16px;
+                border-bottom: 1px solid hsl(var(--border));
+                font-size: 14px;
             }}
-            tr:hover {{
-                background: #f9fafb;
+            tr.clickable {{
+                cursor: pointer;
+                transition: background 150ms ease;
+            }}
+            tr.clickable:hover {{
+                background: hsl(var(--accent));
             }}
             tr:last-child td {{
                 border-bottom: none;
             }}
-            .icon {{ width: 40px; font-size: 18px; }}
-            .name {{ font-weight: 500; color: #111; }}
-            .size {{ color: #6b7280; width: 100px; }}
-            .date {{ color: #6b7280; width: 140px; font-size: 12px; }}
-            .perms {{ color: #9ca3af; width: 120px; font-family: monospace; font-size: 12px; }}
+            .icon {{ width: 48px; font-size: 20px; }}
+            .name {{
+                font-weight: 500;
+                color: hsl(var(--foreground));
+            }}
+            .size {{
+                color: hsl(var(--muted-foreground));
+                width: 100px;
+                font-variant-numeric: tabular-nums;
+            }}
+            .date {{
+                color: hsl(var(--muted-foreground));
+                width: 160px;
+                font-size: 13px;
+                font-variant-numeric: tabular-nums;
+            }}
+            .perms {{
+                color: hsl(var(--muted-foreground));
+                width: 120px;
+                font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                font-size: 12px;
+            }}
             .hidden {{ display: none; }}
         </style>
     </head>
@@ -157,6 +336,8 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
                 <div class="subtitle">File Explorer</div>
             </div>
 
+            <div class="breadcrumb" id="breadcrumb"></div>
+
             <div class="search-box">
                 <input
                     type="text"
@@ -164,6 +345,9 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
                     placeholder="Filter files and directories..."
                     oninput="filterEntries()"
                 />
+                <button onclick="navigateToParent()" class="btn-secondary">
+                    ⬆️ Parent
+                </button>
             </div>
 
             <table>
@@ -183,6 +367,34 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
         </div>
 
         <script>
+            // Build breadcrumb navigation on load
+            (function() {{
+                const host = '{host}';
+                const currentPath = '{path}';
+                const breadcrumb = document.getElementById('breadcrumb');
+
+                // Split path into components
+                const pathParts = currentPath.split('/').filter(p => p);
+
+                // Add host/root
+                breadcrumb.innerHTML = '<span class="breadcrumb-item" onclick="navigateToPath(\'' + host + '\', \'/\', true)">🏠 ' + host + '</span>';
+
+                // Build path incrementally
+                let builtPath = '';
+                pathParts.forEach((part, index) => {{
+                    builtPath += '/' + part;
+                    const isLast = index === pathParts.length - 1;
+
+                    breadcrumb.innerHTML += '<span class="breadcrumb-separator">/</span>';
+
+                    if (isLast) {{
+                        breadcrumb.innerHTML += '<span class="breadcrumb-current">' + part + '</span>';
+                    }} else {{
+                        breadcrumb.innerHTML += '<span class="breadcrumb-item" onclick="navigateToPath(\'' + host + '\', \'' + builtPath + '\', true)">' + part + '</span>';
+                    }}
+                }});
+            }})();
+
             function filterEntries() {{
                 const search = document.getElementById('searchInput').value.toLowerCase();
                 const entries = document.querySelectorAll('.entry');
@@ -196,10 +408,50 @@ def get_directory_explorer_html(host: str, path: str, listing: str) -> str:
                     }}
                 }});
             }}
+
+            function navigateToPath(host, path, isDir) {{
+                // Send tool call to MCP client to navigate to the path
+                if (window.parent) {{
+                    window.parent.postMessage({{
+                        type: 'tool',
+                        payload: {{
+                            toolName: 'scout',
+                            params: {{
+                                target: host + ':' + path
+                            }}
+                        }}
+                    }}, '*');
+                }}
+            }}
+
+            function navigateToParent() {{
+                const currentPath = '{path}';
+                const host = '{host}';
+
+                // Get parent directory
+                const pathParts = currentPath.split('/').filter(p => p);
+                pathParts.pop(); // Remove last component
+                const parentPath = '/' + pathParts.join('/');
+
+                // Send tool call to navigate to parent
+                if (window.parent) {{
+                    window.parent.postMessage({{
+                        type: 'tool',
+                        payload: {{
+                            toolName: 'scout',
+                            params: {{
+                                target: host + ':' + (parentPath || '/')
+                            }}
+                        }}
+                    }}, '*');
+                }}
+            }}
         </script>
     </body>
     </html>
     """
+
+    return minify_html(html)
 
 
 def get_file_viewer_html(
@@ -245,7 +497,7 @@ def get_file_viewer_html(
     line_count = content.count("\n") + 1
     line_numbers = "\n".join(str(i) for i in range(1, line_count + 1))
 
-    return f"""
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -258,29 +510,33 @@ def get_file_viewer_html(
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 12px;
+                padding: 12px 16px;
                 background: #f9fafb;
                 border: 1px solid #e5e7eb;
                 border-radius: 6px 6px 0 0;
                 margin-bottom: 0;
+                flex-wrap: wrap;
+                gap: 8px;
             }}
             .file-info {{
                 display: flex;
                 gap: 16px;
                 font-size: 12px;
                 color: #6b7280;
+                flex-wrap: wrap;
             }}
             .code-container {{
-                display: flex;
+                display: grid;
+                grid-template-columns: auto 1fr;
                 background: #1f2937;
                 border: 1px solid #e5e7eb;
                 border-top: none;
                 border-radius: 0 0 6px 6px;
-                overflow: auto;
+                overflow: hidden;
                 max-height: 80vh;
             }}
             .line-numbers {{
-                padding: 16px 8px;
+                padding: 16px 12px 16px 16px;
                 background: #111827;
                 color: #6b7280;
                 text-align: right;
@@ -289,23 +545,37 @@ def get_file_viewer_html(
                 font-size: 13px;
                 line-height: 1.5;
                 border-right: 1px solid #374151;
+                overflow-y: auto;
+                position: sticky;
+                top: 0;
+                min-width: fit-content;
             }}
             .code-content {{
-                flex: 1;
                 padding: 16px;
                 color: #e5e7eb;
                 font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
                 font-size: 13px;
                 line-height: 1.5;
                 white-space: pre;
-                overflow-x: auto;
+                overflow: auto;
             }}
             .copy-btn {{
                 background: #374151;
                 color: #e5e7eb;
+                white-space: nowrap;
             }}
             .copy-btn:hover {{
                 background: #4b5563;
+            }}
+
+            /* Responsive: hide line numbers on very small screens */
+            @media (max-width: 640px) {{
+                .line-numbers {{
+                    display: none;
+                }}
+                .code-container {{
+                    grid-template-columns: 1fr;
+                }}
             }}
         </style>
     </head>
@@ -345,6 +615,8 @@ def get_file_viewer_html(
     </body>
     </html>
     """
+
+    return minify_html(html)
 
 
 def get_log_viewer_html(host: str, path: str, content: str) -> str:
@@ -387,7 +659,7 @@ def get_log_viewer_html(host: str, path: str, content: str) -> str:
     logs_html = "\n".join(log_lines_html) if log_lines_html else \
         '<div style="color: #6b7280; padding: 32px; text-align: center;">No logs</div>'
 
-    return f"""
+    html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -537,6 +809,8 @@ def get_log_viewer_html(host: str, path: str, content: str) -> str:
     </html>
     """
 
+    return minify_html(html)
+
 
 def get_markdown_viewer_html(host: str, path: str, content: str) -> str:
     """Generate markdown viewer HTML with rendered preview.
@@ -552,7 +826,7 @@ def get_markdown_viewer_html(host: str, path: str, content: str) -> str:
     import html
     escaped_content = html.escape(content)
 
-    return f"""
+    html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -706,3 +980,5 @@ def get_markdown_viewer_html(host: str, path: str, content: str) -> str:
     </body>
     </html>
     """
+
+    return minify_html(html_content)

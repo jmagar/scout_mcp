@@ -109,7 +109,8 @@ async def scout(
         scout(targets=["web1:/var/log/app.log", "web2:/var/log/app.log"]) - Broadcast
         scout(targets=["host1:/etc", "host2:/etc"], query="ls -la") - Broadcast cmd
         scout("shart:/tmp/remote.txt", beam="/tmp/local.txt") - Upload or download
-        scout(beam_source="shart:/tmp/file.txt", beam_target="squirts:/tmp/file.txt") - Remote-to-remote
+        scout(beam_source="shart:/tmp/file.txt", beam_target="squirts:/tmp/file.txt")
+            - Remote-to-remote
 
     Returns:
         UIResource list with interactive UI for files/directories, or
@@ -122,7 +123,8 @@ async def scout(
     if beam and (beam_source or beam_target):
         return (
             "Error: Cannot use both 'beam' and 'beam_source/beam_target'. "
-            "Use 'beam' for local transfers or 'beam_source/beam_target' for remote-to-remote."
+            "Use 'beam' for local transfers or "
+            "'beam_source/beam_target' for remote-to-remote."
         )
 
     if beam_source and not beam_target:
@@ -272,9 +274,14 @@ async def scout(
     if error:
         return f"Error: {error}"
 
-    # Handle file or directory with interactive UI
+    # Handle file or directory
     if path_type == "file":
         content = await handle_file_read(ssh_host, parsed.path)
+
+        # Return plain text if UI is disabled
+        if not config.enable_ui:
+            return content
+
         # Return interactive file viewer UI
         html = await create_file_viewer_ui(
             parsed.host,  # type: ignore[arg-type]
@@ -297,20 +304,31 @@ async def scout(
                 "encoding": "text"
             })
             logger.info(
-                "Successfully created file viewer UIResource (URI: %s, content_length: %d bytes)",
+                "Successfully created file viewer UIResource "
+                "(URI: %s, content_length: %d bytes)",
                 ui_resource.resource.uri,
-                len(html)
+                len(html),
             )
             return [ui_resource]
         except InvalidURIError as e:
             logger.error("Invalid URI format for file viewer (uri=%s): %s", uri, e)
             return f"Error: Failed to create UI resource - invalid URI format: {e}"
         except Exception as e:
-            logger.exception("Unexpected error creating file viewer UIResource (path=%s): %s", parsed.path, e)
+            logger.exception(
+                "Unexpected error creating file viewer UIResource (path=%s): %s",
+                parsed.path,
+                e,
+            )
             return f"Error: Failed to create UI resource: {e}"
     else:
-        # Return interactive directory explorer UI
+        # Return directory listing
         listing = await handle_directory_list(ssh_host, parsed.path, tree)
+
+        # Return plain text if UI is disabled
+        if not config.enable_ui:
+            return listing
+
+        # Return interactive directory explorer UI
         html = await create_directory_ui(
             parsed.host,  # type: ignore[arg-type]
             parsed.path,
@@ -331,14 +349,22 @@ async def scout(
                 "encoding": "text"
             })
             logger.info(
-                "Successfully created directory explorer UIResource (URI: %s, content_length: %d bytes)",
+                "Successfully created directory explorer UIResource "
+                "(URI: %s, content_length: %d bytes)",
                 ui_resource.resource.uri,
-                len(html)
+                len(html),
             )
             return [ui_resource]
         except InvalidURIError as e:
-            logger.error("Invalid URI format for directory explorer (uri=%s): %s", uri, e)
+            logger.error(
+                "Invalid URI format for directory explorer (uri=%s): %s", uri, e
+            )
             return f"Error: Failed to create UI resource - invalid URI format: {e}"
         except Exception as e:
-            logger.exception("Unexpected error creating directory explorer UIResource (path=%s): %s", parsed.path, e)
+            logger.exception(
+                "Unexpected error creating directory explorer UIResource "
+                "(path=%s): %s",
+                parsed.path,
+                e,
+            )
             return f"Error: Failed to create UI resource: {e}"

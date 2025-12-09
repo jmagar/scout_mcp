@@ -17,6 +17,9 @@ SCOUT_HTTP_HOST=127.0.0.1 uv run python -m scout_mcp
 # Run with STDIO transport (for Claude Desktop)
 SCOUT_TRANSPORT=stdio uv run python -m scout_mcp
 
+# Enable MCP-UI interactive HTML responses
+SCOUT_ENABLE_UI=true uv run python -m scout_mcp
+
 # Run tests
 uv run pytest tests/ -v
 
@@ -116,8 +119,27 @@ Reads `~/.ssh/config` for host definitions. Supports allowlist/blocklist filteri
 | `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown SSH host keys |
 | `SCOUT_RATE_LIMIT_PER_MINUTE` | 60 | Max requests per minute per client |
 | `SCOUT_RATE_LIMIT_BURST` | 10 | Max burst size |
+| `SCOUT_ENABLE_UI` | false | Enable MCP-UI interactive HTML responses |
 
 Note: Legacy `MCP_CAT_*` prefix still supported for backward compatibility.
+
+### MCP-UI Support
+
+By default, Scout returns **plain text** for file and directory operations. Enable interactive HTML UIs by setting:
+
+```bash
+SCOUT_ENABLE_UI=true uv run python -m scout_mcp
+```
+
+**With UI enabled:**
+- Files display in an interactive viewer with line numbers and syntax highlighting
+- Directories show a clickable file explorer with breadcrumb navigation
+- Supports filtering, navigation, and copy-to-clipboard
+
+**With UI disabled (default):**
+- Files return raw text content
+- Directories return `ls -la` output
+- Better compatibility with MCP clients that don't support MCP-UI
 
 ### SSH Host Key Verification
 
