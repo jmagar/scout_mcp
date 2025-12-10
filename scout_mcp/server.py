@@ -15,6 +15,7 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
+from scout_mcp.dependencies import Dependencies
 from scout_mcp.middleware import (
     APIKeyMiddleware,
     ErrorHandlingMiddleware,
@@ -22,21 +23,21 @@ from scout_mcp.middleware import (
     RateLimitMiddleware,
 )
 from scout_mcp.middleware.http_adapter import HTTPMiddlewareAdapter
-from scout_mcp.resources import (
-    compose_file_resource,
-    compose_list_resource,
-    compose_logs_resource,
-    docker_list_resource,
-    docker_logs_resource,
-    list_hosts_resource,
-    scout_resource,
-    syslog_resource,
-    zfs_datasets_resource,
-    zfs_overview_resource,
-    zfs_pool_resource,
-    zfs_snapshots_resource,
+from scout_mcp.resources import list_hosts_resource, scout_resource
+from scout_mcp.resources.compose import (
+    ComposeFilePlugin,
+    ComposeListPlugin,
+    ComposeLogsPlugin,
 )
-from scout_mcp.services import get_config, get_pool
+from scout_mcp.resources.docker import DockerListPlugin, DockerLogsPlugin
+from scout_mcp.resources.registry import ResourceRegistry
+from scout_mcp.resources.syslog import SyslogPlugin
+from scout_mcp.resources.zfs import (
+    ZFSDatasetsPlugin,
+    ZFSOverviewPlugin,
+    ZFSPoolPlugin,
+    ZFSSnapshotsPlugin,
+)
 from scout_mcp.tools import scout, test_external_url, test_raw_html, test_remote_dom
 from scout_mcp.utils.console import MCPRequestFormatter
 
@@ -195,7 +196,14 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         Dict with hosts list
     """
     logger.info("Scout MCP server starting up")
-    config = get_config()
+
+    # Create dependencies container
+    deps = Dependencies.create()
+
+    # Store in server context for tools/resources to access
+    server.deps = deps
+
+    config = deps.config
     hosts = config.get_hosts()
     logger.info(
         "Loaded %d SSH host(s): %s",
@@ -384,14 +392,13 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     finally:
         # Shutdown: close all SSH connections
         logger.info("Scout MCP server shutting down")
-        pool = get_pool()
-        if pool.pool_size > 0:
+        if deps.pool.pool_size > 0:
             logger.info(
                 "Closing %d active SSH connection(s): %s",
-                pool.pool_size,
-                ", ".join(pool.active_hosts),
+                deps.pool.pool_size,
+                ", ".join(deps.pool.active_hosts),
             )
-            await pool.close_all()
+            await deps.cleanup()
         logger.info("Scout MCP server shutdown complete")
 
 

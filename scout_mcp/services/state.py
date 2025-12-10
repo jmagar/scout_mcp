@@ -1,4 +1,12 @@
-"""Global state management for Scout MCP."""
+"""Global state management for Scout MCP.
+
+DEPRECATED: This module is deprecated in favor of dependency injection.
+Use scout_mcp.dependencies.Dependencies instead.
+
+This module will be removed in a future version.
+"""
+
+import warnings
 
 from scout_mcp.config import Config
 from scout_mcp.services.pool import ConnectionPool
@@ -9,7 +17,15 @@ _pool: ConnectionPool | None = None
 
 
 def get_config() -> Config:
-    """Get or create config."""
+    """Get or create config.
+
+    DEPRECATED: Use Dependencies.create().config instead.
+    """
+    warnings.warn(
+        "get_config() is deprecated. Use Dependencies.create().config",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _config
     if _config is None:
         _config = Config()
@@ -17,7 +33,15 @@ def get_config() -> Config:
 
 
 def get_pool() -> ConnectionPool:
-    """Get or create connection pool."""
+    """Get or create connection pool.
+
+    DEPRECATED: Use Dependencies.create().pool instead.
+    """
+    warnings.warn(
+        "get_pool() is deprecated. Use Dependencies.create().pool",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _pool
     if _pool is None:
         config = get_config()
