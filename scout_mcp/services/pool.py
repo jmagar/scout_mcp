@@ -1,5 +1,7 @@
 """SSH connection pooling with lazy disconnect.
 
+Implements SSHConnectionPool protocol for dependency inversion.
+
 Locking Strategy:
 - `_meta_lock`: Protects _connections OrderedDict and _host_locks dict structure
 - Per-host locks: Protect connection creation/removal for specific hosts
@@ -20,6 +22,7 @@ from typing import TYPE_CHECKING, Any
 import asyncssh
 
 from scout_mcp.models import PooledConnection
+from scout_mcp.protocols import SSHConnectionPool as ISSHConnectionPool
 
 if TYPE_CHECKING:
     from scout_mcp.models import SSHHost
@@ -27,8 +30,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ConnectionPool:
-    """SSH connection pool with size limits and LRU eviction."""
+class ConnectionPool(ISSHConnectionPool):
+    """SSH connection pool with size limits and LRU eviction.
+
+    Implements SSHConnectionPool protocol for dependency inversion
+    and testability.
+    """
 
     def __init__(
         self,
