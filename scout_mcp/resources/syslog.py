@@ -1,8 +1,8 @@
-"""Syslog resource for reading system logs from remote hosts."""
-
+"""Syslog resource plugin for reading system logs from remote hosts."""
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import syslog_read
 from scout_mcp.services.validation import validate_host
@@ -48,3 +48,23 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
         f"/var/log/syslog ({source_desc})",
         logs
     )
+
+
+class SyslogPlugin(ResourcePlugin):
+    """System logs resource.
+
+    URI: {host}://syslog
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://syslog"
+
+    def get_description(self) -> str:
+        return "System logs (last 100 lines)"
+
+    def get_mime_type(self) -> str:
+        return "text/html"
+
+    async def handle(self, host: str) -> str:
+        """Get system logs for host."""
+        return await syslog_resource(host)

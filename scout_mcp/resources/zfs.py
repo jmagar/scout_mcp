@@ -1,7 +1,8 @@
-"""ZFS resource for reading pool and dataset info from remote hosts."""
+"""ZFS resource plugins for reading pool and dataset info from remote hosts."""
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import (
     zfs_check,
@@ -210,3 +211,71 @@ async def zfs_snapshots_resource(host: str) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+class ZFSOverviewPlugin(ResourcePlugin):
+    """ZFS pool overview resource.
+
+    URI: {host}://zfs
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://zfs"
+
+    def get_description(self) -> str:
+        return "ZFS pool overview"
+
+    async def handle(self, host: str) -> str:
+        """Get ZFS overview for host."""
+        return await zfs_overview_resource(host)
+
+
+class ZFSPoolPlugin(ResourcePlugin):
+    """ZFS pool status resource.
+
+    URI: {host}://zfs/{pool}
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://zfs/{{pool}}"
+
+    def get_description(self) -> str:
+        return "ZFS pool status"
+
+    async def handle(self, host: str, pool: str) -> str:
+        """Get ZFS pool status."""
+        return await zfs_pool_resource(host, pool)
+
+
+class ZFSDatasetsPlugin(ResourcePlugin):
+    """ZFS datasets resource.
+
+    URI: {host}://zfs/{pool}/datasets
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://zfs/{{pool}}/datasets"
+
+    def get_description(self) -> str:
+        return "ZFS datasets for pool"
+
+    async def handle(self, host: str, pool: str) -> str:
+        """Get ZFS datasets for pool."""
+        return await zfs_datasets_resource(host, pool)
+
+
+class ZFSSnapshotsPlugin(ResourcePlugin):
+    """ZFS snapshots resource.
+
+    URI: {host}://zfs/snapshots
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://zfs/snapshots"
+
+    def get_description(self) -> str:
+        return "ZFS snapshots (last 50)"
+
+    async def handle(self, host: str) -> str:
+        """Get ZFS snapshots for host."""
+        return await zfs_snapshots_resource(host)

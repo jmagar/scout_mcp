@@ -1,8 +1,8 @@
-"""Docker Compose resource for reading compose configs and logs from remote hosts."""
-
+"""Docker Compose resource plugins for reading compose configs and logs."""
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import compose_config, compose_logs, compose_ls
 from scout_mcp.services.validation import validate_host
@@ -126,3 +126,60 @@ async def compose_logs_resource(host: str, project: str) -> str:
         f"/compose/{project}/logs",
         logs
     )
+
+
+class ComposeListPlugin(ResourcePlugin):
+    """Docker Compose project list resource.
+
+    URI: {host}://compose
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://compose"
+
+    def get_description(self) -> str:
+        return "List Docker Compose projects"
+
+    async def handle(self, host: str) -> str:
+        """List Compose projects on host."""
+        return await compose_list_resource(host)
+
+
+class ComposeFilePlugin(ResourcePlugin):
+    """Docker Compose config file resource.
+
+    URI: {host}://compose/{project}
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://compose/{{project}}"
+
+    def get_description(self) -> str:
+        return "Docker Compose config file"
+
+    def get_mime_type(self) -> str:
+        return "text/yaml"
+
+    async def handle(self, host: str, project: str) -> str:
+        """Read Compose config for project on host."""
+        return await compose_file_resource(host, project)
+
+
+class ComposeLogsPlugin(ResourcePlugin):
+    """Docker Compose project logs resource.
+
+    URI: {host}://compose/{project}/logs
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://compose/{{project}}/logs"
+
+    def get_description(self) -> str:
+        return "Docker Compose project logs (last 100 lines)"
+
+    def get_mime_type(self) -> str:
+        return "text/html"
+
+    async def handle(self, host: str, project: str) -> str:
+        """Read Compose logs for project on host."""
+        return await compose_logs_resource(host, project)

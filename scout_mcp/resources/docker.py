@@ -1,8 +1,8 @@
-"""Docker resource for reading container logs from remote hosts."""
-
+"""Docker resource plugins for reading container logs and listing containers."""
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import docker_logs, docker_ps
 from scout_mcp.services.validation import validate_host
@@ -96,3 +96,40 @@ async def docker_list_resource(host: str) -> str:
         lines.append("")
 
     return "\n".join(lines)
+
+
+class DockerLogsPlugin(ResourcePlugin):
+    """Docker container logs resource.
+
+    URI: {host}://docker/{container}/logs
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://docker/{{container}}/logs"
+
+    def get_description(self) -> str:
+        return "Docker container logs (last 100 lines)"
+
+    def get_mime_type(self) -> str:
+        return "text/html"
+
+    async def handle(self, host: str, container: str) -> str:
+        """Read docker logs for container on host."""
+        return await docker_logs_resource(host, container)
+
+
+class DockerListPlugin(ResourcePlugin):
+    """Docker container list resource.
+
+    URI: {host}://docker
+    """
+
+    def get_uri_template(self) -> str:
+        return "{host}://docker"
+
+    def get_description(self) -> str:
+        return "List Docker containers"
+
+    async def handle(self, host: str) -> str:
+        """List Docker containers on host."""
+        return await docker_list_resource(host)
