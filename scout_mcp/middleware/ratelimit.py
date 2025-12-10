@@ -1,135 +1,115 @@
-"""Rate limiting middleware for Scout MCP."""
+"""Rate limiting middleware for MCP requests.
 
-import asyncio
-import logging
-import os
+Implements token bucket algorithm to limit requests per client IP.
+Works at MCP layer (not HTTP-specific) for transport independence.
+"""
 import time
-from collections.abc import Awaitable, Callable
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-
-logger = logging.getLogger(__name__)
+from scout_mcp.middleware.base import MCPMiddleware
 
 
 @dataclass
-class RateLimitBucket:
+class TokenBucket:
     """Token bucket for rate limiting."""
 
-    tokens: float = 0.0
-    last_update: float = field(default_factory=time.monotonic)
+    capacity: int
+    refill_rate: float  # tokens per second
+    tokens: float = field(init=False)
+    last_refill: float = field(init=False)
 
-    def consume(self, tokens_per_second: float, max_tokens: float) -> bool:
-        """Try to consume a token. Returns True if allowed."""
+    def __post_init__(self) -> None:
+        self.tokens = float(self.capacity)
+        self.last_refill = time.monotonic()
+
+    def consume(self, count: int = 1) -> bool:
+        """Try to consume tokens. Returns True if successful."""
         now = time.monotonic()
-        elapsed = now - self.last_update
-        self.last_update = now
+        elapsed = now - self.last_refill
 
-        # Refill tokens
-        self.tokens = min(max_tokens, self.tokens + elapsed * tokens_per_second)
+        # Refill tokens based on time elapsed
+        self.tokens = min(self.capacity, self.tokens + (elapsed * self.refill_rate))
+        self.last_refill = now
 
         # Try to consume
-        if self.tokens >= 1.0:
-            self.tokens -= 1.0
+        if self.tokens >= count:
+            self.tokens -= count
             return True
         return False
 
+    def time_until_ready(self) -> float:
+        """Return seconds until next token available."""
+        if self.tokens >= 1:
+            return 0.0
+        needed = 1.0 - self.tokens
+        return needed / self.refill_rate
 
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Simple in-memory rate limiting.
 
-    Uses token bucket algorithm per client IP.
+class RateLimitMiddleware(MCPMiddleware):
+    """MCP-layer rate limiting middleware.
 
-    Environment Variables:
-        SCOUT_RATE_LIMIT_PER_MINUTE: Requests per minute per client (default: 60)
-        SCOUT_RATE_LIMIT_BURST: Max burst size (default: 10)
+    Uses token bucket algorithm per client identifier.
+    Works with any transport (HTTP, STDIO, etc.).
     """
 
-    def __init__(self, app: Any) -> None:
-        super().__init__(app)
-        self._buckets: dict[str, RateLimitBucket] = {}
-        self._lock = asyncio.Lock()
+    def __init__(
+        self,
+        per_minute: int = 60,
+        burst: int = 10,
+    ):
+        """Initialize rate limiter.
 
-        # Load config
-        self._rate_per_minute = int(os.getenv("SCOUT_RATE_LIMIT_PER_MINUTE", "60"))
-        self._burst = int(os.getenv("SCOUT_RATE_LIMIT_BURST", "10"))
-        self._tokens_per_second = self._rate_per_minute / 60.0
-
-        # Initialize enabled state
-        self._enabled = self._rate_per_minute > 0
-
-        if self._enabled:
-            logger.info(
-                "Rate limiting enabled: %d req/min, burst=%d",
-                self._rate_per_minute,
-                self._burst,
+        Args:
+            per_minute: Maximum requests per minute per client
+            burst: Maximum burst size (token bucket capacity)
+        """
+        self.per_minute = per_minute
+        self.burst = burst
+        self.refill_rate = per_minute / 60.0  # tokens per second
+        self._buckets: dict[str, TokenBucket] = defaultdict(
+            lambda: TokenBucket(
+                capacity=self.burst,
+                refill_rate=self.refill_rate,
             )
-        else:
-            logger.info("Rate limiting disabled")
+        )
 
-    def _get_client_key(self, request: Request) -> str:
-        """Get client identifier for rate limiting."""
-        # Use X-Forwarded-For if behind proxy, else client IP
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+    async def process_request(
+        self,
+        method: str,
+        params: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Check rate limit before processing request."""
+        # Extract client identifier from context
+        client_id = self._get_client_id(context)
 
-    async def dispatch(
-        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
-        """Apply rate limiting."""
-        # Skip if disabled
-        if not self._enabled:
-            return await call_next(request)
+        # Get or create bucket for this client
+        bucket = self._buckets[client_id]
 
-        # Skip health checks
-        if request.url.path == "/health":
-            return await call_next(request)
-
-        client_key = self._get_client_key(request)
-
-        async with self._lock:
-            # Initialize new bucket with burst capacity
-            if client_key not in self._buckets:
-                self._buckets[client_key] = RateLimitBucket(
-                    tokens=float(self._burst), last_update=time.monotonic()
-                )
-            bucket = self._buckets[client_key]
-            allowed = bucket.consume(self._tokens_per_second, self._burst)
-
-        if not allowed:
-            logger.warning(
-                "Rate limit exceeded for client %s on %s",
-                client_key,
-                request.url.path,
-            )
-            retry_after = max(1, int(60 / self._rate_per_minute))
-            return JSONResponse(
-                {
-                    "error": "Rate limit exceeded",
-                    "retry_after": retry_after,
-                },
-                status_code=429,
-                headers={
-                    "Retry-After": str(retry_after),
-                },
+        # Try to consume token
+        if not bucket.consume():
+            retry_after = bucket.time_until_ready()
+            raise PermissionError(
+                f"Rate limit exceeded. Retry after {retry_after:.1f} seconds."
             )
 
-        return await call_next(request)
+        return context
 
-    async def cleanup_stale_buckets(self, max_age_seconds: int = 3600) -> int:
-        """Remove buckets that haven't been used recently."""
-        async with self._lock:
-            now = time.monotonic()
-            stale = [
-                key
-                for key, bucket in self._buckets.items()
-                if now - bucket.last_update > max_age_seconds
-            ]
-            for key in stale:
-                del self._buckets[key]
-            return len(stale)
+    def _get_client_id(self, context: dict[str, Any]) -> str:
+        """Extract client identifier from context.
+
+        Tries to get client IP from context, falls back to generic identifier.
+        HTTP transport should populate 'client_ip' in context.
+        """
+        # Check for client IP in context (set by HTTP transport)
+        if "client_ip" in context:
+            return context["client_ip"]
+
+        # Check for other identifiers
+        if "client_id" in context:
+            return context["client_id"]
+
+        # Fallback to generic (all STDIO clients share bucket)
+        return "stdio"

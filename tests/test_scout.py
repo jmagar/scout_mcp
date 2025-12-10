@@ -177,9 +177,13 @@ async def test_scout_beam_requires_valid_target(mock_ssh_config: Path) -> None:
 @pytest.mark.asyncio
 async def test_scout_beam_source_and_target_remote_to_remote():
     """Test remote-to-remote transfer with beam_source and beam_target."""
-    with patch("scout_mcp.tools.scout.get_config") as mock_config, \
-         patch("scout_mcp.tools.scout.get_pool") as mock_pool, \
-         patch("scout_mcp.tools.handlers.handle_beam_transfer_remote_to_remote") as mock_handler:
+    with (
+        patch("scout_mcp.tools.scout.get_config") as mock_config,
+        patch("scout_mcp.tools.scout.get_pool"),
+        patch(
+            "scout_mcp.tools.handlers.handle_beam_transfer_remote_to_remote"
+        ) as mock_handler,
+    ):
 
         # Mock config
         config = AsyncMock()

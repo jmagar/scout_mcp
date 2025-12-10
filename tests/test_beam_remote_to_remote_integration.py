@@ -1,8 +1,8 @@
 """Integration tests for remote-to-remote beam transfers."""
 
-import pytest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from scout_mcp.tools.scout import scout
 
@@ -11,7 +11,7 @@ from scout_mcp.tools.scout import scout
 async def test_remote_to_remote_full_flow(tmp_path):
     """Test complete remote-to-remote transfer flow."""
     with patch("scout_mcp.tools.scout.get_config") as mock_config, \
-         patch("scout_mcp.tools.scout.get_pool") as mock_pool, \
+         patch("scout_mcp.tools.scout.get_pool"), \
          patch("scout_mcp.services.get_connection_with_retry") as mock_conn, \
          patch("scout_mcp.utils.hostname.get_local_hostname") as mock_hostname:
 
@@ -20,7 +20,10 @@ async def test_remote_to_remote_full_flow(tmp_path):
         source_host = AsyncMock(name="remote1")
         target_host = AsyncMock(name="remote2")
 
-        config.get_host.side_effect = lambda name: source_host if name == "remote1" else target_host
+        def get_host(name):
+            return source_host if name == "remote1" else target_host
+
+        config.get_host.side_effect = get_host
         mock_config.return_value = config
 
         mock_hostname.return_value = "localhost"

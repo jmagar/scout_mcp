@@ -4,11 +4,49 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Resolve 5 critical issues: command injection vulnerabilities, SSH host verification bypass, global singleton anti-pattern, code duplication, and test infrastructure breakage.
+**Goal:** Resolve critical security vulnerabilities and architectural issues identified in comprehensive codebase review (2025-12-09).
 
 **Architecture:** Multi-phase approach with security fixes (P0) first, then test infrastructure (P1), followed by architectural improvements (P1-P2).
 
 **Tech Stack:** Python 3.11+, asyncssh, fastmcp, pytest, mypy, ruff
+
+**Security Assessment:**
+- OWASP Top 10 Score: 4/10 FAIL - **NOT PRODUCTION READY**
+- Critical Vulnerabilities: 3 (CVSS 9.8, 8.8, 8.1)
+- High Severity: 4
+- Medium Severity: 5
+- Total Vulnerabilities: 13
+
+---
+
+## Security Best Practices Assessment
+
+### Current State
+
+| Practice | Status | Notes |
+|----------|--------|-------|
+| **Principle of Least Privilege** | ❌ FAIL | Executes as SSH user (often root) |
+| **Defense in Depth** | ⚠️ PARTIAL | Single auth layer, no authorization |
+| **Secure by Default** | ❌ FAIL | SSH verification off, HTTP not HTTPS |
+| **Fail Securely** | ⚠️ PARTIAL | Errors expose internal details |
+| **Zero Trust** | ❌ FAIL | Trusts MCP client completely |
+| **Security Logging** | ⚠️ PARTIAL | Logs credentials, insufficient audit |
+| **Input Validation** | ⚠️ PARTIAL | Good path validation, weak command validation |
+
+### OWASP Top 10 (2021) Compliance
+
+| Category | Status | Findings |
+|----------|--------|----------|
+| **A01: Broken Access Control** | ❌ FAIL | #4 (Path bypass), #7 (No upload limits) |
+| **A02: Cryptographic Failures** | ⚠️ PARTIAL | No HTTPS by default, no SFTP integrity |
+| **A03: Injection** | ❌ FAIL | #1 (Command injection), #3 (Docker injection) |
+| **A04: Insecure Design** | ⚠️ PARTIAL | Command execution by design |
+| **A05: Security Misconfiguration** | ❌ FAIL | #2 (SSH verification disabled by default) |
+| **A06: Vulnerable Components** | ✅ PASS | Dependencies current, no known CVEs |
+| **A07: Authentication Failures** | ⚠️ PARTIAL | #5 (API key logging), #6 (Rate limit bypass) |
+| **A08: Software & Data Integrity** | ❌ FAIL | #11 (No SFTP checksums) |
+| **A09: Logging & Monitoring** | ⚠️ PARTIAL | #8 (Info disclosure) |
+| **A10: SSRF** | ✅ PASS | SSH targets validated |
 
 ---
 

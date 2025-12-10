@@ -28,7 +28,8 @@ def test_raw_html() -> list[UIResource]:
         <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Roboto, sans-serif;
                 padding: 24px;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
@@ -126,9 +127,10 @@ def test_raw_html() -> list[UIResource]:
             "encoding": "text"
         })
         logger.info(
-            "Successfully created rawHtml UIResource (URI: %s, content_length: %d bytes)",
+            "Successfully created rawHtml UIResource "
+            "(URI: %s, content_length: %d bytes)",
             ui_resource.resource.uri,
-            len(html)
+            len(html),
         )
         return [ui_resource]
     except InvalidURIError as e:
@@ -178,7 +180,8 @@ def test_remote_dom() -> list[UIResource]:
 
     // Description
     const desc = createElement('Text', {
-        content: 'This content is dynamically created using JavaScript and the remoteDom API.',
+        content: 'This content is dynamically created using JavaScript ' +
+                 'and the remoteDom API.',
         style: { fontSize: '16px', color: '#4a5568', lineHeight: '1.6' }
     });
 
@@ -245,9 +248,10 @@ def test_remote_dom() -> list[UIResource]:
             "encoding": "text"
         })
         logger.info(
-            "Successfully created remoteDom UIResource (URI: %s, script_length: %d bytes)",
+            "Successfully created remoteDom UIResource "
+            "(URI: %s, script_length: %d bytes)",
             ui_resource.resource.uri,
-            len(js_code)
+            len(js_code),
         )
         return [ui_resource]
     except InvalidURIError as e:

@@ -5,7 +5,11 @@ import shlex
 import pytest
 
 from scout_mcp.utils.shell import quote_arg, quote_path
-from scout_mcp.utils.validation import PathTraversalError, validate_host_format, validate_path
+from scout_mcp.utils.validation import (
+    PathTraversalError,
+    validate_host_format,
+    validate_path,
+)
 
 
 class TestShellQuoting:

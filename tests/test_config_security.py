@@ -59,7 +59,9 @@ def test_missing_known_hosts_raises_error(
 
 
 def test_known_hosts_none_disables_with_warning(
-    temp_ssh_config: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    temp_ssh_config: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that SCOUT_KNOWN_HOSTS=none disables verification with critical warning."""
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
@@ -77,7 +79,9 @@ def test_known_hosts_none_disables_with_warning(
         assert len(caplog.records) >= 1
         # Filter for the known_hosts warning (ignore other CRITICAL logs)
         security_warnings = [
-            r for r in caplog.records if "DISABLED" in r.message and "SCOUT_KNOWN_HOSTS" in r.message
+            r
+            for r in caplog.records
+            if "DISABLED" in r.message and "SCOUT_KNOWN_HOSTS" in r.message
         ]
         assert len(security_warnings) == 1
         assert security_warnings[0].levelname == "CRITICAL"
@@ -143,7 +147,9 @@ def test_default_path_works_when_exists(
 
 
 def test_case_insensitive_none_value(
-    temp_ssh_config: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    temp_ssh_config: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test that various case forms of 'none' all disable verification."""
     test_cases = ["NONE", "None", "NoNe", "nOnE"]
@@ -160,9 +166,12 @@ def test_case_insensitive_none_value(
             # All should return None and log warning
             assert result is None, f"Failed for value: {none_value}"
             security_warnings = [
-                r for r in caplog.records if "DISABLED" in r.message and "SCOUT_KNOWN_HOSTS" in r.message
+                r
+                for r in caplog.records
+                if "DISABLED" in r.message and "SCOUT_KNOWN_HOSTS" in r.message
             ]
-            assert len(security_warnings) >= 1, f"No warning logged for value: {none_value}"
+            msg = f"No warning logged for value: {none_value}"
+            assert len(security_warnings) >= 1, msg
             assert security_warnings[0].levelname == "CRITICAL"
 
 

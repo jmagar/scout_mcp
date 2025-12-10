@@ -1,6 +1,5 @@
 """Syslog resource for reading system logs from remote hosts."""
 
-from typing import Any
 
 from fastmcp.exceptions import ResourceError
 

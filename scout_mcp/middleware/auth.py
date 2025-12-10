@@ -1,126 +1,65 @@
-"""API key authentication middleware for Scout MCP."""
+"""API key authentication middleware for MCP requests.
 
+Works at MCP layer (transport-independent).
+"""
+import hashlib
 import logging
-import os
 import secrets
-from collections.abc import Awaitable, Callable
 from typing import Any
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from scout_mcp.middleware.base import MCPMiddleware
 
 logger = logging.getLogger(__name__)
 
 
-class APIKeyMiddleware(BaseHTTPMiddleware):
-    """ASGI middleware for API key authentication.
+class APIKeyMiddleware(MCPMiddleware):
+    """MCP-layer API key authentication.
 
-    Requires X-API-Key header with valid key from SCOUT_API_KEYS env var.
-
-    Environment Variables:
-        SCOUT_API_KEYS: Comma-separated list of valid API keys
-        SCOUT_AUTH_ENABLED: Set to "false" to disable auth (default: true if keys set)
+    Validates API keys from transport-specific context.
+    Uses constant-time comparison to prevent timing attacks.
     """
 
-    def __init__(self, app: Any) -> None:
-        """Initialize API key middleware.
+    def __init__(self, api_keys: list[str], enabled: bool = True):
+        """Initialize auth middleware.
 
         Args:
-            app: The ASGI application to wrap.
+            api_keys: List of valid API keys
+            enabled: Whether to enforce authentication
         """
-        super().__init__(app)
-        self._api_keys: set[str] = set()
-        self._auth_enabled = False
-        self._load_keys()
+        self.api_keys = api_keys
+        self.enabled = enabled
 
-    def _load_keys(self) -> None:
-        """Load API keys from environment."""
-        keys_str = os.getenv("SCOUT_API_KEYS", "").strip()
-        auth_enabled = os.getenv("SCOUT_AUTH_ENABLED", "").lower()
+    async def process_request(
+        self,
+        method: str,
+        params: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Validate API key from context."""
+        if not self.enabled or not self.api_keys:
+            return context
 
-        if keys_str:
-            self._api_keys = {k.strip() for k in keys_str.split(",") if k.strip()}
-            self._auth_enabled = auth_enabled != "false"
+        # Extract API key from context
+        api_key = context.get("api_key")
 
-            if self._auth_enabled:
-                logger.info(
-                    "API key authentication enabled (%d key(s) configured)",
-                    len(self._api_keys),
-                )
-            else:
-                logger.warning(
-                    "API key authentication DISABLED via SCOUT_AUTH_ENABLED=false"
-                )
-        else:
-            self._auth_enabled = False
+        if not api_key:
+            raise PermissionError("Missing API key")
+
+        if not self._validate_key(api_key):
+            # Hash key for logging (don't log raw key)
+            key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:8]
             logger.warning(
-                "No API keys configured (SCOUT_API_KEYS not set). "
-                "Authentication disabled - server is open to all requests!"
+                "Invalid API key attempt (hash: %s) from %s",
+                key_hash,
+                context.get("client_ip", "unknown"),
             )
+            raise PermissionError("Invalid API key")
+
+        return context
 
     def _validate_key(self, provided_key: str) -> bool:
-        """Validate API key using constant-time comparison.
-
-        Args:
-            provided_key: The API key to validate.
-
-        Returns:
-            True if the key is valid, False otherwise.
-        """
-        for valid_key in self._api_keys:
+        """Validate key using constant-time comparison."""
+        for valid_key in self.api_keys:
             if secrets.compare_digest(provided_key, valid_key):
                 return True
         return False
-
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        """Validate API key before processing request.
-
-        Args:
-            request: The incoming HTTP request.
-            call_next: The next middleware or handler in the chain.
-
-        Returns:
-            The HTTP response from the next handler or a 401 error.
-        """
-        # Skip health checks
-        if request.url.path == "/health":
-            response: Response = await call_next(request)
-            return response
-
-        # Skip if auth disabled
-        if not self._auth_enabled:
-            response = await call_next(request)
-            return response
-
-        # Get API key from header
-        api_key = request.headers.get("X-API-Key", "")
-
-        if not api_key:
-            logger.warning(
-                "Request rejected: missing X-API-Key header from %s",
-                request.client.host if request.client else "unknown",
-            )
-            return JSONResponse(
-                {"error": "Missing X-API-Key header"},
-                status_code=401,
-            )
-
-        if not self._validate_key(api_key):
-            logger.warning(
-                "Request rejected: invalid API key from %s",
-                request.client.host if request.client else "unknown",
-            )
-            return JSONResponse(
-                {"error": "Invalid API key"},
-                status_code=401,
-            )
-
-        # Key valid - proceed
-        logger.debug("API key validated for request to %s", request.url.path)
-        response = await call_next(request)
-        return response

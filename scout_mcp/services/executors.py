@@ -219,8 +219,8 @@ def validate_command(command: str) -> tuple[str, list[str]]:
             f"Command '{cmd}' not allowed. Allowed commands: {allowed_list}"
         )
 
-    # Additional check: ensure no shell metacharacters in cmd itself
-    # (shlex.split should handle this, but defense in depth)
+    # Defense in depth: explicit metacharacter check
+    # (shlex.split and allowlist provide primary protection)
     dangerous_chars = [";", "&", "|", "$", "`", "\n", "\r", "(", ")"]
     for char in dangerous_chars:
         if char in cmd:
@@ -254,7 +254,9 @@ async def run_command(
 
     # Build safe command with proper quoting
     # Note: cd is safe here because working_dir is validated separately
-    full_command = f"cd {shlex.quote(working_dir)} && timeout {timeout} {shlex.quote(cmd)}"
+    quoted_dir = shlex.quote(working_dir)
+    quoted_cmd = shlex.quote(cmd)
+    full_command = f"cd {quoted_dir} && timeout {timeout} {quoted_cmd}"
     for arg in args:
         full_command += f" {shlex.quote(arg)}"
 
@@ -1095,8 +1097,7 @@ async def beam_transfer_remote_to_remote(
 
             # Verify source file exists
             try:
-                source_attrs = await source_sftp.stat(source_path)
-                total_size = source_attrs.size
+                await source_sftp.stat(source_path)
             except Exception as e:
                 return TransferResult(
                     success=False,
@@ -1106,20 +1107,23 @@ async def beam_transfer_remote_to_remote(
 
             # Open source file for reading
             try:
-                async with source_sftp.open(source_path, 'rb') as src_file:
-                    # Open target file for writing
-                    async with target_sftp.open(target_path, 'wb') as dst_file:
-                        # Stream in chunks
-                        while True:
-                            chunk = await src_file.read(CHUNK_SIZE)
-                            if not chunk:
-                                break
-                            await dst_file.write(chunk)
-                            bytes_transferred += len(chunk)
+                async with (
+                    source_sftp.open(source_path, 'rb') as src_file,
+                    target_sftp.open(target_path, 'wb') as dst_file,
+                ):
+                    # Stream in chunks
+                    while True:
+                        chunk = await src_file.read(CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        await dst_file.write(chunk)
+                        bytes_transferred += len(chunk)
 
+                msg = f"Streamed {source_path} → {target_path}"
+                msg += " (remote-to-remote)"
                 return TransferResult(
                     success=True,
-                    message=f"Streamed {source_path} → {target_path} (remote-to-remote)",
+                    message=msg,
                     bytes_transferred=bytes_transferred,
                 )
 

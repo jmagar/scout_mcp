@@ -247,28 +247,37 @@ class Config:
         if value:
             custom_path = Path(os.path.expanduser(value))
             if not custom_path.exists():
-                raise FileNotFoundError(
-                    f"SSH host key verification required but specified known_hosts file not found: {custom_path}\n\n"
+                msg = (
+                    f"SSH host key verification required but specified "
+                    f"known_hosts file not found: {custom_path}\n\n"
                     f"To fix this:\n"
                     f"1. Create the file: touch {custom_path}\n"
-                    f"2. Add host keys: ssh-keyscan <hostname> >> {custom_path}\n"
+                    f"2. Add host keys: ssh-keyscan <hostname> >> "
+                    f"{custom_path}\n"
                     f"3. Or use default location: unset SCOUT_KNOWN_HOSTS\n"
-                    f"4. Or disable verification (NOT RECOMMENDED): export SCOUT_KNOWN_HOSTS=none\n\n"
+                    f"4. Or disable verification (NOT RECOMMENDED): "
+                    f"export SCOUT_KNOWN_HOSTS=none\n\n"
                     f"See SECURITY.md for more information."
                 )
+                raise FileNotFoundError(msg)
             return str(custom_path)
 
         # Default to standard location - must exist (fail-closed)
         default = Path.home() / ".ssh" / "known_hosts"
         if not default.exists():
-            raise FileNotFoundError(
-                f"SSH host key verification required but ~/.ssh/known_hosts not found.\n\n"
-                f"To fix this:\n"
-                f"1. Add host keys: ssh-keyscan <hostname> >> ~/.ssh/known_hosts\n"
-                f"2. Or connect once: ssh <hostname> (answer 'yes' to add key)\n"
-                f"3. Or disable verification (NOT RECOMMENDED): export SCOUT_KNOWN_HOSTS=none\n\n"
-                f"See SECURITY.md for more information."
+            msg = (
+                "SSH host key verification required but "
+                "~/.ssh/known_hosts not found.\n\n"
+                "To fix this:\n"
+                "1. Add host keys: ssh-keyscan <hostname> >> "
+                "~/.ssh/known_hosts\n"
+                "2. Or connect once: ssh <hostname> "
+                "(answer 'yes' to add key)\n"
+                "3. Or disable verification (NOT RECOMMENDED): "
+                "export SCOUT_KNOWN_HOSTS=none\n\n"
+                "See SECURITY.md for more information."
             )
+            raise FileNotFoundError(msg)
         return str(default)
 
     @property

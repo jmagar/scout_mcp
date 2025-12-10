@@ -1,8 +1,8 @@
 """Security tests for command execution."""
 
 import pytest
-from scout_mcp.services.executors import validate_command, run_command
-from scout_mcp.models import CommandResult
+
+from scout_mcp.services.executors import validate_command
 
 
 class TestCommandValidation:

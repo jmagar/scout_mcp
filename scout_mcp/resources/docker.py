@@ -1,6 +1,5 @@
 """Docker resource for reading container logs from remote hosts."""
 
-from typing import Any
 
 from fastmcp.exceptions import ResourceError
 

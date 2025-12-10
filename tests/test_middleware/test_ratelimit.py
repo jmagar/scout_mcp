@@ -5,33 +5,35 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scout_mcp.middleware.ratelimit import RateLimitBucket, RateLimitMiddleware
+from scout_mcp.middleware.ratelimit import RateLimitMiddleware, TokenBucket
 
 
-class TestRateLimitBucket:
+class TestTokenBucket:
     """Test token bucket algorithm."""
 
     def test_consume_success(self):
-        bucket = RateLimitBucket(tokens=5.0)
-        assert bucket.consume(1.0, 10.0) is True
+        bucket = TokenBucket(capacity=10, refill_rate=1.0)
+        bucket.tokens = 5.0
+        assert bucket.consume(1) is True
         # Use approximate comparison due to time.monotonic() precision
         assert 3.9 <= bucket.tokens <= 4.1
 
     def test_consume_empty(self):
-        bucket = RateLimitBucket(tokens=0.5)
-        assert bucket.consume(1.0, 10.0) is False
+        bucket = TokenBucket(capacity=10, refill_rate=1.0)
+        bucket.tokens = 0.5
+        assert bucket.consume(1) is False
         assert bucket.tokens < 1.0
 
     def test_consume_refill(self):
-        bucket = RateLimitBucket(tokens=0.0)
+        bucket = TokenBucket(capacity=10, refill_rate=1.0)
         # Simulate time passing
-        bucket.last_update = time.monotonic() - 5.0  # 5 seconds ago
-        assert bucket.consume(1.0, 10.0) is True  # Should have ~5 tokens
+        bucket.last_refill = time.monotonic() - 5.0  # 5 seconds ago
+        assert bucket.consume(1) is True  # Should have ~5 tokens
 
     def test_consume_respects_max(self):
-        bucket = RateLimitBucket(tokens=0.0)
-        bucket.last_update = time.monotonic() - 100.0  # Long time ago
-        bucket.consume(1.0, 10.0)  # Refill capped at max_tokens
+        bucket = TokenBucket(capacity=10, refill_rate=1.0)
+        bucket.last_refill = time.monotonic() - 100.0  # Long time ago
+        bucket.consume(1)  # Refill capped at max_tokens
         assert bucket.tokens <= 10.0
 
 
@@ -208,3 +210,19 @@ class TestRateLimitMiddleware:
         assert "retry_after" in body
         assert body["error"] == "Rate limit exceeded"
         assert isinstance(body["retry_after"], int)
+
+
+class TestMCPLayerRateLimit:
+    """Test MCP-layer (transport-independent) rate limiting."""
+
+    def test_ratelimit_middleware_inherits_mcp_middleware(self):
+        """Verify RateLimitMiddleware extends MCPMiddleware."""
+        from scout_mcp.middleware.base import MCPMiddleware
+
+        assert issubclass(RateLimitMiddleware, MCPMiddleware)
+
+    def test_ratelimit_middleware_not_http_specific(self):
+        """Verify RateLimitMiddleware doesn't depend on HTTP-specific features."""
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        assert not issubclass(RateLimitMiddleware, BaseHTTPMiddleware)

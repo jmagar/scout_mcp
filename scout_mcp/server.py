@@ -9,7 +9,7 @@ import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Union
+from typing import Any
 
 from fastmcp import FastMCP
 from starlette.requests import Request
@@ -21,6 +21,7 @@ from scout_mcp.middleware import (
     LoggingMiddleware,
     RateLimitMiddleware,
 )
+from scout_mcp.middleware.http_adapter import HTTPMiddlewareAdapter
 from scout_mcp.resources import (
     compose_file_resource,
     compose_list_resource,
@@ -94,7 +95,7 @@ _configure_logging()
 logger = logging.getLogger(__name__)
 
 
-async def _read_host_path(host: str, path: str) -> Union[str, dict[str, Any]]:
+async def _read_host_path(host: str, path: str) -> str | dict[str, Any]:
     """Read a file or directory on a remote host.
 
     Args:
@@ -437,8 +438,9 @@ def create_server() -> FastMCP:
     configure_middleware(server)
 
     # Register tools
-    # Disable output_schema for scout tool - it returns UIResource in content array
-    # UIResource doesn't need outputSchema validation (per MCP spec: content vs structuredContent)
+    # Disable output_schema for scout tool - it returns UIResource in content
+    # UIResource doesn't need outputSchema validation
+    # (per MCP spec: content vs structuredContent)
     server.tool(output_schema=None)(scout)
 
     # Register MCP-UI test tools
@@ -462,13 +464,58 @@ def create_server() -> FastMCP:
     http_app = server.http_app()
 
     # Add rate limiting middleware (always - disable via SCOUT_RATE_LIMIT_PER_MINUTE=0)
-    http_app.add_middleware(RateLimitMiddleware)
-    logger.info("Rate limiting middleware configured for HTTP transport")
+    rate_per_minute = int(os.getenv("SCOUT_RATE_LIMIT_PER_MINUTE", "60"))
+    rate_burst = int(os.getenv("SCOUT_RATE_LIMIT_BURST", "10"))
+
+    if rate_per_minute > 0:
+        # Create MCP-layer middleware
+        rate_limit = RateLimitMiddleware(
+            per_minute=rate_per_minute,
+            burst=rate_burst,
+        )
+        # Wrap in HTTP adapter
+        http_app.add_middleware(
+            HTTPMiddlewareAdapter,
+            mcp_middleware=rate_limit,
+        )
+        logger.info(
+            "Rate limiting middleware configured: %d req/min, burst=%d",
+            rate_per_minute,
+            rate_burst,
+        )
+    else:
+        logger.info("Rate limiting disabled (SCOUT_RATE_LIMIT_PER_MINUTE=0)")
 
     # Add API key authentication if keys are set
-    if os.getenv("SCOUT_API_KEYS"):
-        http_app.add_middleware(APIKeyMiddleware)
-        logger.info("API key authentication middleware configured for HTTP transport")
+    api_keys_str = os.getenv("SCOUT_API_KEYS", "").strip()
+    if api_keys_str:
+        # Create MCP-layer middleware
+        api_keys = [k.strip() for k in api_keys_str.split(",") if k.strip()]
+        auth_enabled = os.getenv("SCOUT_AUTH_ENABLED", "").lower() != "false"
+
+        auth_middleware = APIKeyMiddleware(
+            api_keys=api_keys,
+            enabled=auth_enabled,
+        )
+        # Wrap in HTTP adapter
+        http_app.add_middleware(
+            HTTPMiddlewareAdapter,
+            mcp_middleware=auth_middleware,
+        )
+        if auth_enabled:
+            logger.info(
+                "API key authentication enabled (%d key(s) configured)",
+                len(api_keys),
+            )
+        else:
+            logger.warning(
+                "API key authentication DISABLED via SCOUT_AUTH_ENABLED=false"
+            )
+    else:
+        logger.warning(
+            "No API keys configured (SCOUT_API_KEYS not set). "
+            "Authentication disabled - server is open to all requests!"
+        )
 
     return server
 

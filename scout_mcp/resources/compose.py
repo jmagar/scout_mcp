@@ -1,6 +1,5 @@
 """Docker Compose resource for reading compose configs and logs from remote hosts."""
 
-from typing import Any
 
 from fastmcp.exceptions import ResourceError
 
