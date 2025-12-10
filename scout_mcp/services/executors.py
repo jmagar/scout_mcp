@@ -1,6 +1,7 @@
 """SSH command executors for file operations."""
 
 import asyncio
+import re
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
@@ -290,6 +291,68 @@ async def run_command(
     )
 
 
+def validate_container_name(name: str) -> str:
+    """Validate Docker container name.
+
+    Args:
+        name: Container name to validate
+
+    Returns:
+        Validated container name
+
+    Raises:
+        ValueError: If name contains invalid characters
+    """
+    if not name:
+        raise ValueError("Container name cannot be empty")
+
+    # Docker container names: alphanumeric, dash, underscore, period
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", name):
+        raise ValueError(f"Invalid container name: {name}")
+
+    return name
+
+
+def validate_project_name(name: str) -> str:
+    """Validate Docker Compose project name.
+
+    Args:
+        name: Project name to validate
+
+    Returns:
+        Validated project name
+
+    Raises:
+        ValueError: If name contains invalid characters
+    """
+    if not name:
+        raise ValueError("Project name cannot be empty")
+
+    # Docker Compose project names: alphanumeric, dash, underscore
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        raise ValueError(f"Invalid project name: {name}")
+
+    return name
+
+
+def validate_depth(depth: int) -> int:
+    """Validate search depth parameter.
+
+    Args:
+        depth: Search depth to validate
+
+    Returns:
+        Validated depth
+
+    Raises:
+        ValueError: If depth is out of safe range
+    """
+    if depth < 1 or depth > 10:
+        raise ValueError(f"depth must be 1-10, got {depth}")
+
+    return depth
+
+
 async def docker_logs(
     conn: "asyncssh.SSHClientConnection",
     container: str,
@@ -308,8 +371,12 @@ async def docker_logs(
         Tuple of (logs content, container_exists boolean).
 
     Raises:
+        ValueError: If container name is invalid
         RuntimeError: If Docker command fails unexpectedly.
     """
+    # Validate container name before use
+    container = validate_container_name(container)
+
     ts_flag = "--timestamps" if timestamps else ""
     cmd = f"docker logs --tail {tail} {ts_flag} {shlex.quote(container)} 2>&1"
 
@@ -501,7 +568,13 @@ async def compose_logs(
 
     Returns:
         Tuple of (logs content, project_exists boolean).
+
+    Raises:
+        ValueError: If project name is invalid
     """
+    # Validate project name before use
+    project = validate_project_name(project)
+
     ts_flag = "--timestamps" if timestamps else ""
     cmd = f"docker compose -p {shlex.quote(project)} logs --tail {tail} {ts_flag} 2>&1"
 
@@ -774,8 +847,14 @@ async def find_files(
 
     Returns:
         Newline-separated list of matching paths, or error message.
+
+    Raises:
+        ValueError: If depth is out of safe range
     """
-    # Build find command
+    # Validate depth to prevent filesystem traversal abuse
+    max_depth = validate_depth(max_depth)
+
+    # Build find command with proper quoting
     type_flag = f"-type {shlex.quote(file_type)}" if file_type else ""
     cmd = (
         f"find {shlex.quote(path)} -maxdepth {max_depth} -name {shlex.quote(pattern)} "
