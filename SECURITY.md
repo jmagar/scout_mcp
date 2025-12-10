@@ -201,19 +201,39 @@ HTTP 429 status with `Retry-After` header
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to known_hosts file |
+| `SCOUT_KNOWN_HOSTS` | ~/.ssh/known_hosts | Path to known_hosts file (must exist) |
 | `SCOUT_STRICT_HOST_KEY_CHECKING` | true | Reject unknown host keys |
 
 **Security Warning:** Setting `SCOUT_KNOWN_HOSTS=none` disables host key verification, making connections vulnerable to man-in-the-middle attacks. Only use this in trusted networks or for testing.
 
-**Behavior:**
-- **Default:** Uses `~/.ssh/known_hosts` if it exists, disables verification if not found
+**Behavior (Fail-Closed Security):**
+- **Default:** Uses `~/.ssh/known_hosts` - **raises FileNotFoundError if file doesn't exist**
+- **Custom path:** Set `SCOUT_KNOWN_HOSTS=/path/to/known_hosts` - **raises FileNotFoundError if file doesn't exist**
+- **Explicit disable:** Set `SCOUT_KNOWN_HOSTS=none` - logs critical warning and disables verification
 - **Strict mode (default):** Connection fails if host key is unknown or mismatched
 - **Non-strict mode:** Warns but allows connection if host key verification fails
+
+**Creating known_hosts file:**
+```bash
+# Add a specific host's key
+ssh-keyscan hostname >> ~/.ssh/known_hosts
+
+# Or connect once interactively (answer 'yes' when prompted)
+ssh hostname
+
+# Or create empty file (will need to add keys later)
+touch ~/.ssh/known_hosts
+```
 
 **Example - Disable verification (NOT RECOMMENDED):**
 ```bash
 export SCOUT_KNOWN_HOSTS=none
+uv run python -m scout_mcp
+```
+
+**Example - Use custom known_hosts location:**
+```bash
+export SCOUT_KNOWN_HOSTS=/custom/path/known_hosts
 uv run python -m scout_mcp
 ```
 
@@ -222,6 +242,26 @@ uv run python -m scout_mcp
 export SCOUT_STRICT_HOST_KEY_CHECKING=false
 uv run python -m scout_mcp
 ```
+
+**Troubleshooting:**
+
+If you see `FileNotFoundError: SSH host key verification required but ~/.ssh/known_hosts not found`:
+
+1. **Create the file and add host keys:**
+   ```bash
+   ssh-keyscan your-server-hostname >> ~/.ssh/known_hosts
+   ```
+
+2. **Or connect once interactively:**
+   ```bash
+   ssh your-server-hostname
+   # Answer 'yes' when prompted to add the key
+   ```
+
+3. **Or disable verification (NOT RECOMMENDED for production):**
+   ```bash
+   export SCOUT_KNOWN_HOSTS=none
+   ```
 
 ### Resource Limits
 

@@ -222,22 +222,54 @@ class Config:
         """Path to known_hosts file, or None to disable verification.
 
         Environment: SCOUT_KNOWN_HOSTS
-        Default: ~/.ssh/known_hosts
-        Special value: "none" disables verification (NOT RECOMMENDED)
+        Default: ~/.ssh/known_hosts (must exist)
+        Special value: "none" disables verification (NOT RECOMMENDED - MITM vulnerable)
 
         Returns:
-            Path to known_hosts file or None if disabled
+            Path to known_hosts file or None if explicitly disabled
+
+        Raises:
+            FileNotFoundError: If known_hosts file doesn't exist (fail-closed security)
         """
         value = os.getenv("SCOUT_KNOWN_HOSTS", "").strip()
+
+        # Explicit disable with critical security warning
         if value.lower() == "none":
+            logger.critical(
+                "SSH host key verification DISABLED (SCOUT_KNOWN_HOSTS=none). "
+                "This makes connections vulnerable to man-in-the-middle attacks. "
+                "Only use this in trusted networks or for testing. "
+                "See SECURITY.md for secure configuration."
+            )
             return None
+
+        # Custom path specified
         if value:
-            return os.path.expanduser(value)
-        # Default to standard location
+            custom_path = Path(os.path.expanduser(value))
+            if not custom_path.exists():
+                raise FileNotFoundError(
+                    f"SSH host key verification required but specified known_hosts file not found: {custom_path}\n\n"
+                    f"To fix this:\n"
+                    f"1. Create the file: touch {custom_path}\n"
+                    f"2. Add host keys: ssh-keyscan <hostname> >> {custom_path}\n"
+                    f"3. Or use default location: unset SCOUT_KNOWN_HOSTS\n"
+                    f"4. Or disable verification (NOT RECOMMENDED): export SCOUT_KNOWN_HOSTS=none\n\n"
+                    f"See SECURITY.md for more information."
+                )
+            return str(custom_path)
+
+        # Default to standard location - must exist (fail-closed)
         default = Path.home() / ".ssh" / "known_hosts"
-        if default.exists():
-            return str(default)
-        return None  # No known_hosts available
+        if not default.exists():
+            raise FileNotFoundError(
+                f"SSH host key verification required but ~/.ssh/known_hosts not found.\n\n"
+                f"To fix this:\n"
+                f"1. Add host keys: ssh-keyscan <hostname> >> ~/.ssh/known_hosts\n"
+                f"2. Or connect once: ssh <hostname> (answer 'yes' to add key)\n"
+                f"3. Or disable verification (NOT RECOMMENDED): export SCOUT_KNOWN_HOSTS=none\n\n"
+                f"See SECURITY.md for more information."
+            )
+        return str(default)
 
     @property
     def strict_host_key_checking(self) -> bool:
