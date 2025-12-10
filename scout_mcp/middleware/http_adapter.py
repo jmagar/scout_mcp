@@ -10,6 +10,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from scout_mcp.middleware.base import MCPMiddleware
+from scout_mcp.middleware.ratelimit import RateLimitError
 
 
 class HTTPMiddlewareAdapter(BaseHTTPMiddleware):
@@ -28,7 +29,14 @@ class HTTPMiddlewareAdapter(BaseHTTPMiddleware):
         request: Request,
         call_next: Any,
     ) -> Response:
-        """Extract HTTP context and delegate to MCP middleware."""
+        """Extract HTTP context and delegate to MCP middleware.
+
+        Health check endpoint bypasses all middleware for monitoring.
+        """
+        # Skip middleware for health checks
+        if request.url.path == "/health":
+            return await call_next(request)
+
         # Build context from HTTP request
         context = {
             "client_ip": self._get_client_ip(request),
@@ -51,28 +59,21 @@ class HTTPMiddlewareAdapter(BaseHTTPMiddleware):
 
             return response
 
-        except PermissionError as e:
-            # Rate limit or auth error
-            error_msg = str(e)
-
-            # Extract retry_after from error message if present
-            retry_after_seconds = None
-            if "Retry after" in error_msg:
-                try:
-                    # Extract the float value from "Retry after X.X seconds."
-                    parts = error_msg.split("after ")[1].split(" ")
-                    retry_after_seconds = int(float(parts[0])) + 1
-                except (IndexError, ValueError):
-                    retry_after_seconds = 1
-
-            headers = {}
-            if retry_after_seconds:
-                headers["Retry-After"] = str(retry_after_seconds)
+        except RateLimitError as e:
+            # Rate limit error with structured retry_after
+            retry_after_seconds = int(e.retry_after) + 1
 
             return JSONResponse(
-                status_code=429 if "Rate limit" in error_msg else 401,
-                content={"error": error_msg},
-                headers=headers,
+                status_code=429,
+                content={"error": str(e)},
+                headers={"Retry-After": str(retry_after_seconds)},
+            )
+
+        except PermissionError as e:
+            # Auth error (no retry)
+            return JSONResponse(
+                status_code=401,
+                content={"error": str(e)},
             )
 
     def _get_client_ip(self, request: Request) -> str:

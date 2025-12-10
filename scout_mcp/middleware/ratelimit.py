@@ -11,6 +11,20 @@ from typing import Any
 from scout_mcp.middleware.base import MCPMiddleware
 
 
+class RateLimitError(PermissionError):
+    """Rate limit exceeded error with structured retry timing."""
+
+    def __init__(self, message: str, retry_after: float):
+        """Initialize rate limit error.
+
+        Args:
+            message: Human-readable error message
+            retry_after: Seconds until next token available
+        """
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
 @dataclass
 class TokenBucket:
     """Token bucket for rate limiting."""
@@ -91,8 +105,9 @@ class RateLimitMiddleware(MCPMiddleware):
         # Try to consume token
         if not bucket.consume():
             retry_after = bucket.time_until_ready()
-            raise PermissionError(
-                f"Rate limit exceeded. Retry after {retry_after:.1f} seconds."
+            raise RateLimitError(
+                f"Rate limit exceeded. Retry after {retry_after:.1f} seconds.",
+                retry_after=retry_after,
             )
 
         return context
@@ -113,3 +128,22 @@ class RateLimitMiddleware(MCPMiddleware):
 
         # Fallback to generic (all STDIO clients share bucket)
         return "stdio"
+
+    def cleanup_stale_buckets(self, max_age_seconds: int = 3600) -> int:
+        """Remove buckets that haven't been used recently.
+
+        Args:
+            max_age_seconds: Maximum age before bucket is considered stale
+
+        Returns:
+            Number of buckets removed
+        """
+        now = time.monotonic()
+        stale = [
+            client_id
+            for client_id, bucket in self._buckets.items()
+            if now - bucket.last_refill > max_age_seconds
+        ]
+        for client_id in stale:
+            del self._buckets[client_id]
+        return len(stale)

@@ -1,7 +1,10 @@
-"""Tests for rate limiting middleware."""
+"""Tests for rate limiting middleware.
+
+Note: HTTP-specific tests moved to test_http_adapter.py.
+These tests focus on token bucket algorithm and MCP-layer rate limiting.
+"""
 
 import time
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -38,178 +41,29 @@ class TestTokenBucket:
 
 
 @pytest.mark.asyncio
-class TestRateLimitMiddleware:
-    """Test rate limiting middleware."""
+class TestRateLimitMiddlewareCleanup:
+    """Test cleanup_stale_buckets method."""
 
-    @pytest.fixture
-    def middleware(self, monkeypatch):
-        monkeypatch.setenv("SCOUT_RATE_LIMIT_PER_MINUTE", "60")
-        monkeypatch.setenv("SCOUT_RATE_LIMIT_BURST", "5")
-        return RateLimitMiddleware(MagicMock())
+    async def test_cleanup_stale_buckets(self):
+        """Test that cleanup removes stale buckets."""
+        middleware = RateLimitMiddleware(per_minute=60, burst=5)
 
-    @pytest.fixture
-    def middleware_disabled(self, monkeypatch):
-        monkeypatch.setenv("SCOUT_RATE_LIMIT_PER_MINUTE", "0")
-        return RateLimitMiddleware(MagicMock())
-
-    async def test_allows_normal_traffic(self, middleware):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = None
-
-        call_next = AsyncMock(return_value="response")
-
-        result = await middleware.dispatch(request, call_next)
-
-        assert result == "response"
-        call_next.assert_called_once()
-
-    async def test_blocks_burst_exceeded(self, middleware):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = None
-
-        call_next = AsyncMock(return_value="response")
-
-        # Exhaust burst (5 requests)
-        for _ in range(5):
-            await middleware.dispatch(request, call_next)
-
-        # Next should be blocked
-        result = await middleware.dispatch(request, call_next)
-
-        assert result.status_code == 429
-
-    async def test_health_bypasses_ratelimit(self, middleware):
-        request = MagicMock()
-        request.url.path = "/health"
-        call_next = AsyncMock(return_value="response")
-
-        # Should always succeed
-        for _ in range(100):
-            result = await middleware.dispatch(request, call_next)
-            assert result == "response"
-
-    async def test_disabled_allows_all(self, middleware_disabled):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = None
-
-        call_next = AsyncMock(return_value="response")
-
-        for _ in range(100):
-            result = await middleware_disabled.dispatch(request, call_next)
-            assert result == "response"
-
-    async def test_different_clients_independent(self, middleware):
-        call_next = AsyncMock(return_value="response")
-
-        # Two different clients
-        for ip in ["192.168.1.1", "192.168.1.2"]:
-            request = MagicMock()
-            request.url.path = "/mcp"
-            request.client.host = ip
-            request.headers.get.return_value = None
-
-            # Each should get their own burst allowance
-            for _ in range(5):
-                result = await middleware.dispatch(request, call_next)
-                assert result == "response"
-
-    async def test_forwarded_for_header(self, middleware):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = "192.168.1.100, 10.0.0.1"
-
-        call_next = AsyncMock(return_value="response")
-
-        # Should use first IP from X-Forwarded-For
-        result = await middleware.dispatch(request, call_next)
-        assert result == "response"
-
-        # Exhaust burst for this client
-        for _ in range(4):
-            await middleware.dispatch(request, call_next)
-
-        # Next should be blocked
-        result = await middleware.dispatch(request, call_next)
-        assert result.status_code == 429
-
-    async def test_retry_after_header(self, middleware):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = None
-
-        call_next = AsyncMock(return_value="response")
-
-        # Exhaust burst
-        for _ in range(5):
-            await middleware.dispatch(request, call_next)
-
-        # Get rate limited response
-        result = await middleware.dispatch(request, call_next)
-
-        assert result.status_code == 429
-        assert "Retry-After" in result.headers
-        assert int(result.headers["Retry-After"]) >= 1
-
-    async def test_cleanup_stale_buckets(self, middleware):
         # Create some buckets
-        request1 = MagicMock()
-        request1.url.path = "/mcp"
-        request1.client.host = "192.168.1.1"
-        request1.headers.get.return_value = None
+        context1 = {"client_ip": "192.168.1.1"}
+        context2 = {"client_ip": "192.168.1.2"}
 
-        request2 = MagicMock()
-        request2.url.path = "/mcp"
-        request2.client.host = "192.168.1.2"
-        request2.headers.get.return_value = None
+        await middleware.process_request("test", {}, context1)
+        await middleware.process_request("test", {}, context2)
 
-        call_next = AsyncMock(return_value="response")
-
-        await middleware.dispatch(request1, call_next)
-        await middleware.dispatch(request2, call_next)
-
-        # Mark one as stale
-        async with middleware._lock:
-            middleware._buckets["192.168.1.1"].last_update = time.monotonic() - 4000
+        # Mark one as stale by backdating last_refill
+        middleware._buckets["192.168.1.1"].last_refill = time.monotonic() - 4000
 
         # Cleanup with 1 hour threshold
-        removed = await middleware.cleanup_stale_buckets(max_age_seconds=3600)
+        removed = middleware.cleanup_stale_buckets(max_age_seconds=3600)
 
         assert removed == 1
         assert "192.168.1.1" not in middleware._buckets
         assert "192.168.1.2" in middleware._buckets
-
-    async def test_error_response_format(self, middleware):
-        request = MagicMock()
-        request.url.path = "/mcp"
-        request.client.host = "127.0.0.1"
-        request.headers.get.return_value = None
-
-        call_next = AsyncMock(return_value="response")
-
-        # Exhaust burst
-        for _ in range(5):
-            await middleware.dispatch(request, call_next)
-
-        # Get rate limited response
-        result = await middleware.dispatch(request, call_next)
-
-        assert result.status_code == 429
-        # Check JSON body structure
-        import json
-
-        body = json.loads(result.body)
-        assert "error" in body
-        assert "retry_after" in body
-        assert body["error"] == "Rate limit exceeded"
-        assert isinstance(body["retry_after"], int)
 
 
 class TestMCPLayerRateLimit:
