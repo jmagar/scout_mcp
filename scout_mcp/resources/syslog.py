@@ -2,6 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.dependencies import Dependencies
 from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import syslog_read
@@ -9,7 +10,7 @@ from scout_mcp.services.validation import validate_host
 from scout_mcp.ui import create_log_viewer_ui
 
 
-async def syslog_resource(host: str, lines: int = 100) -> str:
+async def syslog_resource(host: str, deps: Dependencies, lines: int = 100) -> str:
     """Show system logs with interactive log viewer UI.
 
     Dynamically detects whether to use journalctl (systemd) or
@@ -17,17 +18,18 @@ async def syslog_resource(host: str, lines: int = 100) -> str:
 
     Args:
         host: SSH host name from ~/.ssh/config
+        deps: Dependencies container with config and pool
         lines: Number of log lines to retrieve (default 100)
 
     Returns:
         HTML string with log viewer interface
     """
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, deps.config)
 
     # Get connection
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, deps.pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 
@@ -56,6 +58,14 @@ class SyslogPlugin(ResourcePlugin):
     URI: {host}://syslog
     """
 
+    def __init__(self, deps: Dependencies):
+        """Initialize plugin with dependencies.
+
+        Args:
+            deps: Dependencies container with config and pool
+        """
+        self.deps = deps
+
     def get_uri_template(self) -> str:
         return "{host}://syslog"
 
@@ -67,4 +77,4 @@ class SyslogPlugin(ResourcePlugin):
 
     async def handle(self, host: str) -> str:
         """Get system logs for host."""
-        return await syslog_resource(host)
+        return await syslog_resource(host, self.deps)

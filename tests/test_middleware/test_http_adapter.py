@@ -1,5 +1,4 @@
 """Tests for HTTP middleware adapter."""
-import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request

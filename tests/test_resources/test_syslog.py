@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from scout_mcp.config import Config
+from scout_mcp.dependencies import Dependencies
 
 
 @pytest.fixture
@@ -20,64 +21,50 @@ Host tootie
     return config_file
 
 
-@pytest.mark.asyncio
-async def test_syslog_resource_returns_logs(mock_ssh_config: Path) -> None:
-    """syslog_resource returns UI with formatted log output."""
-    from scout_mcp.resources.syslog import syslog_resource
-
+@pytest.fixture
+def deps(mock_ssh_config: Path) -> Dependencies:
+    """Create Dependencies with mock config and pool."""
     config = Config(ssh_config_path=mock_ssh_config)
-
     mock_pool = AsyncMock()
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
+    return Dependencies(config=config, pool=mock_pool)
+
+
+@pytest.mark.asyncio
+async def test_syslog_resource_returns_logs(deps: Dependencies) -> None:
+    """syslog_resource returns HTML with formatted log output."""
+    from scout_mcp.resources.syslog import syslog_resource
 
     log_content = (
         "Nov 29 12:00:00 tootie sshd[123]: Connection accepted\n"
         "Nov 29 12:00:01 tootie kernel: eth0: link up"
     )
 
-    with (
-        patch("scout_mcp.resources.syslog.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
-        patch(
-            "scout_mcp.resources.syslog.syslog_read",
-            return_value=(log_content, "journalctl"),
-        ),
+    with patch(
+        "scout_mcp.resources.syslog.syslog_read",
+        return_value=(log_content, "journalctl"),
     ):
-        result = await syslog_resource("tootie")
+        result = await syslog_resource("tootie", deps)
 
-        # Should return UIResource dict
-        assert isinstance(result, dict)
-        assert result["type"] == "resource"
-        assert result["resource"]["mimeType"] == "text/html"
-        assert "ui://scout-logs/" in str(result["resource"]["uri"])
-        assert "journalctl" in str(result["resource"]["uri"])
-        assert "sshd" in result["resource"]["text"]
-        assert "kernel" in result["resource"]["text"]
+        # Should return HTML string
+        assert isinstance(result, str)
+        assert "<!DOCTYPE html>" in result
+        assert "sshd" in result
+        assert "kernel" in result
 
 
 @pytest.mark.asyncio
-async def test_syslog_resource_no_logs_available(mock_ssh_config: Path) -> None:
-    """syslog_resource shows UI message when no logs available."""
+async def test_syslog_resource_no_logs_available(deps: Dependencies) -> None:
+    """syslog_resource shows HTML message when no logs available."""
     from scout_mcp.resources.syslog import syslog_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
-
-    mock_pool = AsyncMock()
-    mock_pool.get_connection = AsyncMock()
-    mock_pool.remove_connection = AsyncMock()
-
-    with (
-        patch("scout_mcp.resources.syslog.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
-        patch(
-            "scout_mcp.resources.syslog.syslog_read",
-            return_value=("", "none"),
-        ),
+    with patch(
+        "scout_mcp.resources.syslog.syslog_read",
+        return_value=("", "none"),
     ):
-        result = await syslog_resource("tootie")
+        result = await syslog_resource("tootie", deps)
 
-        # Should return UIResource dict with error message
-        assert isinstance(result, dict)
-        assert result["type"] == "resource"
-        assert "not available" in result["resource"]["text"].lower()
+        # Should return HTML string with error message
+        assert isinstance(result, str)
+        assert "not available" in result.lower()

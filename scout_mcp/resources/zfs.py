@@ -2,6 +2,7 @@
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.dependencies import Dependencies
 from scout_mcp.resources.plugin import ResourcePlugin
 from scout_mcp.services import ConnectionError, get_connection_with_retry
 from scout_mcp.services.executors import (
@@ -14,21 +15,22 @@ from scout_mcp.services.executors import (
 from scout_mcp.services.validation import validate_host
 
 
-async def zfs_overview_resource(host: str) -> str:
+async def zfs_overview_resource(host: str, deps: Dependencies) -> str:
     """Show ZFS overview for remote host.
 
     Args:
         host: SSH host name from ~/.ssh/config
+        deps: Dependencies container with config and pool
 
     Returns:
         Formatted ZFS overview with pools and usage.
     """
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, deps.config)
 
     # Get connection
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, deps.pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 
@@ -74,22 +76,23 @@ async def zfs_overview_resource(host: str) -> str:
     return "\n".join(lines)
 
 
-async def zfs_pool_resource(host: str, pool_name: str) -> str:
+async def zfs_pool_resource(host: str, pool_name: str, deps: Dependencies) -> str:
     """Show detailed ZFS pool status.
 
     Args:
         host: SSH host name from ~/.ssh/config
         pool_name: ZFS pool name
+        deps: Dependencies container with config and pool
 
     Returns:
         Pool status output.
     """
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, deps.config)
 
     # Get connection
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, deps.pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 
@@ -113,22 +116,23 @@ async def zfs_pool_resource(host: str, pool_name: str) -> str:
     return header + status
 
 
-async def zfs_datasets_resource(host: str, pool_name: str) -> str:
+async def zfs_datasets_resource(host: str, pool_name: str, deps: Dependencies) -> str:
     """Show ZFS datasets for a pool.
 
     Args:
         host: SSH host name from ~/.ssh/config
         pool_name: ZFS pool name
+        deps: Dependencies container with config and pool
 
     Returns:
         Formatted dataset list.
     """
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, deps.config)
 
     # Get connection
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, deps.pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 
@@ -169,21 +173,22 @@ async def zfs_datasets_resource(host: str, pool_name: str) -> str:
     return "\n".join(lines)
 
 
-async def zfs_snapshots_resource(host: str) -> str:
+async def zfs_snapshots_resource(host: str, deps: Dependencies) -> str:
     """Show ZFS snapshots on host.
 
     Args:
         host: SSH host name from ~/.ssh/config
+        deps: Dependencies container with config and pool
 
     Returns:
         Formatted snapshot list.
     """
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, deps.config)
 
     # Get connection
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, deps.pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 
@@ -219,6 +224,14 @@ class ZFSOverviewPlugin(ResourcePlugin):
     URI: {host}://zfs
     """
 
+    def __init__(self, deps: Dependencies):
+        """Initialize plugin with dependencies.
+
+        Args:
+            deps: Dependencies container with config and pool
+        """
+        self.deps = deps
+
     def get_uri_template(self) -> str:
         return "{host}://zfs"
 
@@ -227,7 +240,7 @@ class ZFSOverviewPlugin(ResourcePlugin):
 
     async def handle(self, host: str) -> str:
         """Get ZFS overview for host."""
-        return await zfs_overview_resource(host)
+        return await zfs_overview_resource(host, self.deps)
 
 
 class ZFSPoolPlugin(ResourcePlugin):
@@ -235,6 +248,14 @@ class ZFSPoolPlugin(ResourcePlugin):
 
     URI: {host}://zfs/{pool}
     """
+
+    def __init__(self, deps: Dependencies):
+        """Initialize plugin with dependencies.
+
+        Args:
+            deps: Dependencies container with config and pool
+        """
+        self.deps = deps
 
     def get_uri_template(self) -> str:
         return "{host}://zfs/{{pool}}"
@@ -244,7 +265,7 @@ class ZFSPoolPlugin(ResourcePlugin):
 
     async def handle(self, host: str, pool: str) -> str:
         """Get ZFS pool status."""
-        return await zfs_pool_resource(host, pool)
+        return await zfs_pool_resource(host, pool, self.deps)
 
 
 class ZFSDatasetsPlugin(ResourcePlugin):
@@ -252,6 +273,14 @@ class ZFSDatasetsPlugin(ResourcePlugin):
 
     URI: {host}://zfs/{pool}/datasets
     """
+
+    def __init__(self, deps: Dependencies):
+        """Initialize plugin with dependencies.
+
+        Args:
+            deps: Dependencies container with config and pool
+        """
+        self.deps = deps
 
     def get_uri_template(self) -> str:
         return "{host}://zfs/{{pool}}/datasets"
@@ -261,7 +290,7 @@ class ZFSDatasetsPlugin(ResourcePlugin):
 
     async def handle(self, host: str, pool: str) -> str:
         """Get ZFS datasets for pool."""
-        return await zfs_datasets_resource(host, pool)
+        return await zfs_datasets_resource(host, pool, self.deps)
 
 
 class ZFSSnapshotsPlugin(ResourcePlugin):
@@ -269,6 +298,14 @@ class ZFSSnapshotsPlugin(ResourcePlugin):
 
     URI: {host}://zfs/snapshots
     """
+
+    def __init__(self, deps: Dependencies):
+        """Initialize plugin with dependencies.
+
+        Args:
+            deps: Dependencies container with config and pool
+        """
+        self.deps = deps
 
     def get_uri_template(self) -> str:
         return "{host}://zfs/snapshots"
@@ -278,4 +315,4 @@ class ZFSSnapshotsPlugin(ResourcePlugin):
 
     async def handle(self, host: str) -> str:
         """Get ZFS snapshots for host."""
-        return await zfs_snapshots_resource(host)
+        return await zfs_snapshots_resource(host, self.deps)

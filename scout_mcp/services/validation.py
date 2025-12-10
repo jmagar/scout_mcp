@@ -2,15 +2,16 @@
 
 from fastmcp.exceptions import ResourceError
 
+from scout_mcp.config import Config
 from scout_mcp.models import SSHHost
-from scout_mcp.services.state import get_config
 
 
-def validate_host(host: str) -> SSHHost:
+def validate_host(host: str, config: Config) -> SSHHost:
     """Validate host exists in SSH config.
 
     Args:
         host: Host name to validate
+        config: Config instance to validate against
 
     Returns:
         SSHHost: Validated host object
@@ -18,7 +19,6 @@ def validate_host(host: str) -> SSHHost:
     Raises:
         ResourceError: If host not found
     """
-    config = get_config()
     ssh_host = config.get_host(host)
     if ssh_host is None:
         available = ", ".join(sorted(config.get_hosts().keys()))

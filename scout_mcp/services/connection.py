@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     import asyncssh
 
     from scout_mcp.models import SSHHost
+    from scout_mcp.services.pool import ConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class ConnectionError(Exception):
 
 async def get_connection_with_retry(
     ssh_host: "SSHHost",
+    pool: "ConnectionPool",
 ) -> "asyncssh.SSHClientConnection":
     """Get SSH connection with automatic one-time retry on failure.
 
@@ -40,6 +42,7 @@ async def get_connection_with_retry(
 
     Args:
         ssh_host: SSH host configuration
+        pool: Connection pool to use
 
     Returns:
         Active SSH connection
@@ -47,10 +50,6 @@ async def get_connection_with_retry(
     Raises:
         ConnectionError: If connection fails after retry
     """
-    from scout_mcp.services.state import get_pool
-
-    pool = get_pool()
-
     try:
         return await pool.get_connection(ssh_host)
     except Exception as first_error:

@@ -1,8 +1,7 @@
 """Tests for dependency injection container."""
 
-import pytest
-from scout_mcp.dependencies import Dependencies
 from scout_mcp.config import Config
+from scout_mcp.dependencies import Dependencies
 from scout_mcp.services.pool import ConnectionPool
 
 

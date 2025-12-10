@@ -1,12 +1,13 @@
 """End-to-end integration tests for Scout MCP workflows."""
 
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from scout_mcp.tools import scout
-from scout_mcp.services import reset_state, set_config
+import pytest
+
 from scout_mcp.config import Config
+from scout_mcp.services import reset_state, set_config
+from scout_mcp.tools import scout
 
 
 @pytest.fixture(autouse=True)

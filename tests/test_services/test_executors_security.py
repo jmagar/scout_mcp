@@ -5,8 +5,8 @@ import pytest
 from scout_mcp.services.executors import (
     validate_command,
     validate_container_name,
-    validate_project_name,
     validate_depth,
+    validate_project_name,
 )
 
 

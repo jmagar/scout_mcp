@@ -143,17 +143,17 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     # Create resource registry and register plugins
     registry = ResourceRegistry()
 
-    # Register all resource plugins
-    registry.register(DockerLogsPlugin())
-    registry.register(DockerListPlugin())
-    registry.register(ComposeListPlugin())
-    registry.register(ComposeFilePlugin())
-    registry.register(ComposeLogsPlugin())
-    registry.register(ZFSOverviewPlugin())
-    registry.register(ZFSPoolPlugin())
-    registry.register(ZFSDatasetsPlugin())
-    registry.register(ZFSSnapshotsPlugin())
-    registry.register(SyslogPlugin())
+    # Register all resource plugins with dependencies
+    registry.register(DockerLogsPlugin(deps))
+    registry.register(DockerListPlugin(deps))
+    registry.register(ComposeListPlugin(deps))
+    registry.register(ComposeFilePlugin(deps))
+    registry.register(ComposeLogsPlugin(deps))
+    registry.register(ZFSOverviewPlugin(deps))
+    registry.register(ZFSPoolPlugin(deps))
+    registry.register(ZFSDatasetsPlugin(deps))
+    registry.register(ZFSSnapshotsPlugin(deps))
+    registry.register(SyslogPlugin(deps))
 
     # Create and register all dynamic resources
     resources = registry.create_resources(hosts)

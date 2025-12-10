@@ -1,8 +1,8 @@
 """Tests for resource registry."""
 import pytest
 
-from scout_mcp.resources.registry import ResourceRegistry
 from scout_mcp.resources.plugin import ResourcePlugin
+from scout_mcp.resources.registry import ResourceRegistry
 
 
 @pytest.fixture

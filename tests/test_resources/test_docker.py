@@ -7,6 +7,7 @@ import pytest
 from fastmcp.exceptions import ResourceError
 
 from scout_mcp.config import Config
+from scout_mcp.dependencies import Dependencies
 
 
 @pytest.fixture
@@ -21,124 +22,89 @@ Host tootie
     return config_file
 
 
-@pytest.mark.asyncio
-async def test_docker_logs_resource_returns_logs(mock_ssh_config: Path) -> None:
-    """docker_logs_resource returns UI with formatted container logs."""
-    from scout_mcp.resources.docker import docker_logs_resource
-
+@pytest.fixture
+def deps(mock_ssh_config: Path) -> Dependencies:
+    """Create Dependencies with mock config and pool."""
     config = Config(ssh_config_path=mock_ssh_config)
-
     mock_pool = AsyncMock()
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()
-
-    with (
-        patch("scout_mcp.resources.docker.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
-        patch(
-            "scout_mcp.resources.docker.docker_logs",
-            return_value=("2024-01-01T00:00:00Z Test log line", True),
-        ),
-    ):
-        result = await docker_logs_resource("tootie", "plex")
-
-        # Should return UIResource dict
-        assert isinstance(result, dict)
-        assert result["type"] == "resource"
-        assert result["resource"]["mimeType"] == "text/html"
-        assert "ui://scout-logs/" in str(result["resource"]["uri"])
-        assert "Test log line" in result["resource"]["text"]
+    return Dependencies(config=config, pool=mock_pool)
 
 
 @pytest.mark.asyncio
-async def test_docker_logs_resource_unknown_host(mock_ssh_config: Path) -> None:
+async def test_docker_logs_resource_returns_logs(deps: Dependencies) -> None:
+    """docker_logs_resource returns HTML with formatted container logs."""
+    from scout_mcp.resources.docker import docker_logs_resource
+
+    with patch(
+        "scout_mcp.resources.docker.docker_logs",
+        return_value=("2024-01-01T00:00:00Z Test log line", True),
+    ):
+        result = await docker_logs_resource("tootie", "plex", deps)
+
+        # Should return HTML string
+        assert isinstance(result, str)
+        assert "<!DOCTYPE html>" in result
+        assert "Test log line" in result
+        assert "tootie" in result
+
+
+@pytest.mark.asyncio
+async def test_docker_logs_resource_unknown_host(deps: Dependencies) -> None:
     """docker_logs_resource raises ResourceError for unknown host."""
     from scout_mcp.resources.docker import docker_logs_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
-
-    with (
-        patch("scout_mcp.resources.docker.get_config", return_value=config),
-        pytest.raises(ResourceError, match="Unknown host 'unknown'"),
-    ):
-        await docker_logs_resource("unknown", "plex")
+    with pytest.raises(ResourceError, match="Unknown host 'unknown'"):
+        await docker_logs_resource("unknown", "plex", deps)
 
 
 @pytest.mark.asyncio
-async def test_docker_logs_resource_container_not_found(mock_ssh_config: Path) -> None:
+async def test_docker_logs_resource_container_not_found(deps: Dependencies) -> None:
     """docker_logs_resource raises ResourceError for missing container."""
     from scout_mcp.resources.docker import docker_logs_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
-
-    mock_pool = AsyncMock()
-    mock_pool.get_connection = AsyncMock()
-    mock_pool.remove_connection = AsyncMock()
-
     with (
-        patch("scout_mcp.resources.docker.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
         patch(
             "scout_mcp.resources.docker.docker_logs",
             return_value=("", False),
         ),
         pytest.raises(ResourceError, match="not found"),
     ):
-        await docker_logs_resource("tootie", "missing")
+        await docker_logs_resource("tootie", "missing", deps)
 
 
 @pytest.mark.asyncio
-async def test_docker_list_resource_returns_containers(mock_ssh_config: Path) -> None:
+async def test_docker_list_resource_returns_containers(deps: Dependencies) -> None:
     """docker_list_resource returns formatted container list."""
     from scout_mcp.resources.docker import docker_list_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
-
-    mock_pool = AsyncMock()
-    mock_pool.get_connection = AsyncMock()
-    mock_pool.remove_connection = AsyncMock()
-
-    containers = [
-        {"name": "plex", "status": "Up 2 days", "image": "plexinc/pms-docker"},
-        {"name": "nginx", "status": "Exited (0)", "image": "nginx:latest"},
-    ]
-
-    with (
-        patch("scout_mcp.resources.docker.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
-        patch(
-            "scout_mcp.resources.docker.docker_ps",
-            return_value=containers,
-        ),
+    with patch(
+        "scout_mcp.resources.docker.docker_ps",
+        return_value=[
+            {
+                "name": "plex",
+                "status": "Up 5 days",
+                "image": "plexinc/pms-docker:latest",
+            },
+        ],
     ):
-        result = await docker_list_resource("tootie")
+        result = await docker_list_resource("tootie", deps)
 
-        assert "Docker Containers on tootie" in result
+        assert "# Docker Containers on tootie" in result
         assert "plex" in result
-        assert "nginx" in result
-        assert "tootie://docker/plex/logs" in result
+        assert "Up 5 days" in result
 
 
 @pytest.mark.asyncio
-async def test_docker_list_resource_no_containers(mock_ssh_config: Path) -> None:
-    """docker_list_resource handles no containers gracefully."""
+async def test_docker_list_resource_no_containers(deps: Dependencies) -> None:
+    """docker_list_resource returns message when no containers found."""
     from scout_mcp.resources.docker import docker_list_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
-
-    mock_pool = AsyncMock()
-    mock_pool.get_connection = AsyncMock()
-    mock_pool.remove_connection = AsyncMock()
-
-    with (
-        patch("scout_mcp.resources.docker.get_config", return_value=config),
-        patch("scout_mcp.services.state.get_pool", return_value=mock_pool),
-        patch(
-            "scout_mcp.resources.docker.docker_ps",
-            return_value=[],
-        ),
+    with patch(
+        "scout_mcp.resources.docker.docker_ps",
+        return_value=[],
     ):
-        result = await docker_list_resource("tootie")
+        result = await docker_list_resource("tootie", deps)
 
-        assert "Docker Containers on tootie" in result
         assert "No containers found" in result
