@@ -226,11 +226,29 @@ uv run python -m scout_mcp
 
 See [SECURITY.md](SECURITY.md) for complete security documentation, threat model, and deployment best practices.
 
+## Test Coverage
+
+![Coverage](https://img.shields.io/badge/coverage-74%25-yellow)
+
+- **Total:** 74%
+- **Tests:** 422 (374 passing)
+- **Last Updated:** 2025-12-10
+
+Run tests with coverage:
+```bash
+uv run pytest tests/ -v --cov=scout_mcp --cov-report=term-missing --cov-report=html
+```
+
+HTML coverage report: `open htmlcov/index.html`
+
 ## Development
 
 ```bash
 # Run tests
 uv run pytest tests/ -v
+
+# Run tests with coverage
+uv run pytest tests/ -v --cov=scout_mcp
 
 # Lint and type check
 uv run ruff check scout_mcp/ tests/
