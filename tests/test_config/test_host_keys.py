@@ -43,10 +43,12 @@ def test_verifier_disabled_with_none() -> None:
 
 
 def test_verifier_raises_on_missing_file_strict_mode(tmp_path: Path) -> None:
-    """Verifier raises if file missing in strict mode."""
+    """Verifier raises if file missing in strict mode (lazy evaluation)."""
     missing = tmp_path / "nonexistent"
+    verifier = HostKeyVerifier(known_hosts_path=str(missing), strict_checking=True)
     with pytest.raises(FileNotFoundError, match="known_hosts file not found"):
-        HostKeyVerifier(known_hosts_path=str(missing), strict_checking=True)
+        # Exception raised on first access (lazy evaluation)
+        _ = verifier.get_known_hosts_path()
 
 
 def test_verifier_allows_missing_file_non_strict(tmp_path: Path) -> None:

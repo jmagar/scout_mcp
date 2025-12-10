@@ -13,7 +13,7 @@ async def test_remote_to_remote_full_flow(tmp_path):
     with patch("scout_mcp.tools.scout.get_config") as mock_config, \
          patch("scout_mcp.tools.scout.get_pool"), \
          patch("scout_mcp.services.get_connection_with_retry") as mock_conn, \
-         patch("scout_mcp.utils.hostname.get_local_hostname") as mock_hostname:
+         patch("scout_mcp.utils.hostname.get_server_hostname") as mock_hostname:
 
         # Setup mocks
         config = AsyncMock()
@@ -77,7 +77,7 @@ async def test_optimization_when_server_is_source(tmp_path):
     """Test optimization when MCP server is the source host."""
     with patch("scout_mcp.tools.scout.get_config") as mock_config, \
          patch("scout_mcp.services.get_connection_with_retry") as mock_conn, \
-         patch("scout_mcp.utils.hostname.get_local_hostname") as mock_hostname:
+         patch("scout_mcp.utils.hostname.get_server_hostname") as mock_hostname:
 
         # Setup: MCP server is "tootie"
         config = AsyncMock()

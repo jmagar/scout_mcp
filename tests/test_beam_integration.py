@@ -29,7 +29,7 @@ async def test_beam_roundtrip(mock_ssh_config: Path) -> None:
     from scout_mcp.services import reset_state, set_config
 
     reset_state()
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Create temp file with known content
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
@@ -92,7 +92,7 @@ async def test_beam_with_nonexistent_remote(mock_ssh_config: Path) -> None:
     from scout_mcp.services import reset_state, set_config
 
     reset_state()
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Mock SSH connection and SFTP
     mock_conn = AsyncMock()

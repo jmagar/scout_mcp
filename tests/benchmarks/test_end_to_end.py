@@ -64,7 +64,7 @@ def temp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Config:
     config_path.write_text("\n".join(lines))
 
     # Create config
-    config = Config(ssh_config_path=config_path)
+    config = Config.from_ssh_config(ssh_config_path=config_path)
 
     # Mock asyncssh
     async def mock_connect(*args: Any, **kwargs: Any) -> MockSSHConnection:

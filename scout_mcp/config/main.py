@@ -65,6 +65,35 @@ class Config:
             host_keys=host_keys,
         )
 
+    @classmethod
+    def from_ssh_config(
+        cls,
+        ssh_config_path: Path | str | None = None,
+        allowlist: list[str] | None = None,
+        blocklist: list[str] | None = None,
+    ) -> "Config":
+        """Create config from SSH config path (backward compatibility).
+
+        Deprecated: Use from_env() or Config(...) constructor directly.
+
+        Args:
+            ssh_config_path: Path to SSH config file
+            allowlist: List of hosts to include
+            blocklist: List of hosts to exclude
+
+        Returns:
+            Configured instance with default settings
+        """
+        settings = Settings.from_env()
+        parser = SSHConfigParser(
+            config_path=ssh_config_path,
+            allowlist=allowlist,
+            blocklist=blocklist,
+        )
+        # Disable strict host key checking for backward compatibility
+        host_keys = HostKeyVerifier(known_hosts_path=None, strict_checking=False)
+        return cls(settings=settings, parser=parser, host_keys=host_keys)
+
     @staticmethod
     def _get_bool_env(key: str, default: bool) -> bool:
         """Get boolean from environment.

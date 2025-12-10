@@ -34,7 +34,7 @@ async def test_scout_hosts_lists_available(mock_ssh_config: Path) -> None:
     """scout('hosts') lists available SSH hosts."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     result = await scout("hosts")
 
@@ -47,7 +47,7 @@ async def test_scout_unknown_host_returns_error() -> None:
     """scout with unknown host returns helpful error."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=Path("/nonexistent")))
+    set_config(Config.from_ssh_config(ssh_config_path=Path("/nonexistent")))
 
     result = await scout("unknownhost:/path")
 
@@ -69,7 +69,7 @@ async def test_scout_cat_file(mock_ssh_config: Path) -> None:
     """scout with file path cats the file."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -93,7 +93,7 @@ async def test_scout_ls_directory(mock_ssh_config: Path) -> None:
     """scout with directory path lists contents."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -118,7 +118,7 @@ async def test_scout_run_command(mock_ssh_config: Path) -> None:
     """scout with query runs the command."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -139,7 +139,7 @@ async def test_scout_find_files(mock_ssh_config: Path) -> None:
     """scout with find parameter searches for files."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -165,7 +165,7 @@ async def test_scout_find_respects_depth(mock_ssh_config: Path) -> None:
     """scout find respects depth parameter."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -186,7 +186,7 @@ async def test_scout_find_empty_results(mock_ssh_config: Path) -> None:
     """scout find returns message when no files found."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -224,7 +224,7 @@ async def test_scout_resource_reads_file(mock_ssh_config: Path) -> None:
     """scout resource reads file contents."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -248,7 +248,7 @@ async def test_scout_resource_lists_directory(mock_ssh_config: Path) -> None:
     """scout resource lists directory contents."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -274,7 +274,7 @@ async def test_scout_resource_unknown_host_raises() -> None:
 
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=Path("/nonexistent")))
+    set_config(Config.from_ssh_config(ssh_config_path=Path("/nonexistent")))
 
     with pytest.raises(ResourceError, match="Unknown host"):
         await scout_resource("unknownhost", "etc/hosts")
@@ -287,7 +287,7 @@ async def test_scout_resource_path_not_found_raises(mock_ssh_config: Path) -> No
 
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False
@@ -307,7 +307,7 @@ async def test_scout_resource_normalizes_path(mock_ssh_config: Path) -> None:
     """scout resource adds leading slash to paths."""
     from scout_mcp.config import Config
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     mock_conn = AsyncMock()
     mock_conn.is_closed = False

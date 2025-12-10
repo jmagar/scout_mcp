@@ -29,7 +29,7 @@ async def test_lifespan_registers_host_templates(mock_ssh_config: Path) -> None:
     """Lifespan registers a resource template for each SSH host."""
     from scout_mcp.server import app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with patch("scout_mcp.server.get_config", return_value=config):
         mcp = create_server()
@@ -65,7 +65,7 @@ async def test_read_host_path_reads_file(mock_ssh_config: Path) -> None:
     from scout_mcp.config import Config
     from scout_mcp.server import _read_host_path
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     # Mock the SSH connection and pool
     mock_conn = AsyncMock()
@@ -103,7 +103,7 @@ async def test_read_host_path_lists_directory(mock_ssh_config: Path) -> None:
     from scout_mcp.config import Config
     from scout_mcp.server import _read_host_path
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     mock_conn = AsyncMock()
     mock_conn.run = AsyncMock(
@@ -146,7 +146,7 @@ async def test_read_host_path_unknown_host_raises_error(mock_ssh_config: Path) -
     from scout_mcp.config import Config
     from scout_mcp.server import _read_host_path
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with (
         patch("scout_mcp.server.get_config", return_value=config),
@@ -164,7 +164,7 @@ async def test_dynamic_resource_integration(mock_ssh_config: Path) -> None:
     from scout_mcp.config import Config
     from scout_mcp.server import _read_host_path, app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     # Mock the SSH connection and pool
     mock_conn = AsyncMock()
@@ -217,7 +217,7 @@ async def test_lifespan_registers_docker_templates(mock_ssh_config: Path) -> Non
     """Lifespan registers Docker resource templates for each host."""
     from scout_mcp.server import app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with patch("scout_mcp.server.get_config", return_value=config):
         mcp = create_server()
@@ -254,7 +254,7 @@ async def test_lifespan_registers_compose_templates(mock_ssh_config: Path) -> No
     """Lifespan registers Compose resource templates for each host."""
     from scout_mcp.server import app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with patch("scout_mcp.server.get_config", return_value=config):
         mcp = create_server()
@@ -296,7 +296,7 @@ async def test_lifespan_registers_zfs_templates(mock_ssh_config: Path) -> None:
     """Lifespan registers ZFS resource templates for each host."""
     from scout_mcp.server import app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with patch("scout_mcp.server.get_config", return_value=config):
         mcp = create_server()
@@ -334,7 +334,7 @@ async def test_lifespan_registers_syslog_resources(mock_ssh_config: Path) -> Non
     """Lifespan registers syslog resources for each host."""
     from scout_mcp.server import app_lifespan, create_server
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     with patch("scout_mcp.server.get_config", return_value=config):
         mcp = create_server()

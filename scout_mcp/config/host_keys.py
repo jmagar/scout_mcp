@@ -14,6 +14,7 @@ class HostKeyVerifier:
     """SSH host key verification manager.
 
     Handles known_hosts configuration for MITM prevention.
+    Lazy evaluation: Errors only raised when path is accessed.
     """
 
     def __init__(
@@ -26,12 +27,10 @@ class HostKeyVerifier:
         Args:
             known_hosts_path: Path to known_hosts file or 'none' to disable
             strict_checking: Reject unknown host keys
-
-        Raises:
-            FileNotFoundError: If strict mode and file missing
         """
         self.strict_checking = strict_checking
-        self._known_hosts = self._resolve_known_hosts(known_hosts_path)
+        self._known_hosts_raw = known_hosts_path
+        self._resolved: str | None | Exception = None  # Lazy cache
 
     def _resolve_known_hosts(self, env_value: str | None) -> str | None:
         """Resolve known_hosts path with security defaults.
@@ -102,10 +101,28 @@ class HostKeyVerifier:
     def get_known_hosts_path(self) -> str | None:
         """Get path to known_hosts file.
 
+        Lazy evaluation: Only resolves path on first access.
+        Caches result (including errors) for subsequent calls.
+
         Returns:
             Path string or None if verification disabled
+
+        Raises:
+            FileNotFoundError: If strict mode and file missing
         """
-        return self._known_hosts
+        # Lazy evaluation on first access
+        if self._resolved is None:
+            try:
+                self._resolved = self._resolve_known_hosts(self._known_hosts_raw)
+            except Exception as e:
+                # Cache the exception for consistent behavior
+                self._resolved = e
+
+        # Raise cached exception if resolution failed
+        if isinstance(self._resolved, Exception):
+            raise self._resolved
+
+        return self._resolved
 
     def is_enabled(self) -> bool:
         """Check if host key verification is enabled.
@@ -113,4 +130,8 @@ class HostKeyVerifier:
         Returns:
             True if verification is enabled
         """
-        return self._known_hosts is not None
+        # Try to get the path, return False if it fails or is None
+        try:
+            return self.get_known_hosts_path() is not None
+        except Exception:
+            return False

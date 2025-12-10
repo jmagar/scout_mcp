@@ -24,7 +24,7 @@ Host tootie
 @pytest.fixture
 def deps(mock_ssh_config: Path) -> Dependencies:
     """Create Dependencies with mock config and pool."""
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
     mock_pool = AsyncMock()
     mock_pool.get_connection = AsyncMock()
     mock_pool.remove_connection = AsyncMock()

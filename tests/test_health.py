@@ -19,7 +19,7 @@ class TestHealthCheck:
 
         ssh_config = tmp_path / "ssh_config"
         ssh_config.write_text("Host test\n    HostName 127.0.0.1\n")
-        config = Config(ssh_config_path=ssh_config)
+        config = Config.from_ssh_config(ssh_config_path=ssh_config)
 
         with patch("scout_mcp.server.get_config", return_value=config):
             server = create_server()

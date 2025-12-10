@@ -45,7 +45,7 @@ async def test_full_scout_workflow_list_hosts_to_read_file(
     2. User calls scout('testhost:/etc/hostname') to read a file
     3. Both operations succeed without errors
     """
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: List hosts
     hosts_result = await scout("hosts")
@@ -82,7 +82,7 @@ async def test_full_scout_workflow_with_command_execution(
     2. User calls scout('testhost:/var/log', 'grep ERROR') to run command
     3. Command executes and returns results
     """
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: List hosts
     hosts_result = await scout("hosts")
@@ -114,7 +114,7 @@ async def test_error_recovery_workflow(mock_ssh_config: Path) -> None:
     1. First request fails with connection error
     2. Second request succeeds (connection retry)
     """
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: Mock connection failure
     with patch(
@@ -152,7 +152,7 @@ async def test_workflow_list_directory_then_read_file(
     """
     from scout_mcp.services import get_pool
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: List directory
     mock_conn = AsyncMock()
@@ -199,7 +199,7 @@ async def test_workflow_find_files_then_read(mock_ssh_config: Path) -> None:
     """
     from scout_mcp.services import get_pool
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: Find files
     mock_conn = AsyncMock()
@@ -244,7 +244,7 @@ async def test_workflow_multiple_hosts(mock_ssh_config: Path) -> None:
     2. Read file from first host
     3. Read file from second host
     """
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: List hosts
     hosts_result = await scout("hosts")
@@ -290,7 +290,7 @@ async def test_workflow_tree_view_then_navigate(mock_ssh_config: Path) -> None:
     """
     from scout_mcp.services import get_pool
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: View tree structure
     mock_conn = AsyncMock()
@@ -337,7 +337,7 @@ async def test_workflow_invalid_operations_with_recovery(
     2. Unknown host
     3. Valid operation after errors
     """
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: Invalid target format
     result1 = await scout("invalid-target")
@@ -364,7 +364,7 @@ async def test_workflow_command_with_different_args(mock_ssh_config: Path) -> No
     """
     from scout_mcp.services import get_pool
 
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Step 1: grep command
     mock_conn = AsyncMock()

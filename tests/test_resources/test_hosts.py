@@ -29,7 +29,7 @@ async def test_hosts_resource_shows_dynamic_schemes(mock_ssh_config: Path) -> No
     """hosts://list shows host-specific URI schemes."""
     from scout_mcp.resources.hosts import list_hosts_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     # Mock ping to return all hosts online
     async def mock_check_hosts(
@@ -59,7 +59,7 @@ async def test_hosts_resource_shows_examples(mock_ssh_config: Path) -> None:
     """hosts://list shows example URIs for each host."""
     from scout_mcp.resources.hosts import list_hosts_resource
 
-    config = Config(ssh_config_path=mock_ssh_config)
+    config = Config.from_ssh_config(ssh_config_path=mock_ssh_config)
 
     async def mock_check_hosts(
         hosts: dict[str, tuple[str, int]], timeout: float

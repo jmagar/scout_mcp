@@ -83,7 +83,7 @@ async def test_scout_beam_upload(mock_ssh_config: Path) -> None:
     from scout_mcp.services import reset_state, set_config
 
     reset_state()
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     # Create temp local file
     with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
@@ -125,7 +125,7 @@ async def test_scout_beam_download(mock_ssh_config: Path) -> None:
     from scout_mcp.services import reset_state, set_config
 
     reset_state()
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     with tempfile.TemporaryDirectory() as tmpdir:
         local_path = f"{tmpdir}/downloaded.txt"
@@ -166,7 +166,7 @@ async def test_scout_beam_requires_valid_target(mock_ssh_config: Path) -> None:
     from scout_mcp.services import reset_state, set_config
 
     reset_state()
-    set_config(Config(ssh_config_path=mock_ssh_config))
+    set_config(Config.from_ssh_config(ssh_config_path=mock_ssh_config))
 
     result = await scout(target="hosts", beam="/tmp/file.txt")
 
