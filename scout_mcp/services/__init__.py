@@ -1,5 +1,6 @@
 """Services for Scout MCP."""
 
+from scout_mcp.dependencies import Dependencies
 from scout_mcp.services.connection import (
     ConnectionError,
     get_connection_with_retry,
@@ -29,6 +30,7 @@ from scout_mcp.services.state import (
 __all__ = [
     "ConnectionError",
     "ConnectionPool",
+    "Dependencies",
     "beam_transfer",
     "broadcast_command",
     "broadcast_read",
