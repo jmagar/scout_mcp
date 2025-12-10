@@ -147,7 +147,7 @@ async def test_run_command_includes_stderr(mock_connection: AsyncMock) -> None:
     )
 
     result = await run_command(
-        mock_connection, "/home/user", "failing-command", timeout=30
+        mock_connection, "/home/user", "grep pattern", timeout=30
     )
 
     assert result.error == "error message"
@@ -491,7 +491,7 @@ async def test_broadcast_command_handles_failures() -> None:
         mock_pool,
         mock_config,
         [("host1", "/path")],
-        command="nonexistent",
+        command="grep pattern",
         timeout=30,
     )
 

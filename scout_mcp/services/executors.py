@@ -4,7 +4,7 @@ import asyncio
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from scout_mcp.models import BroadcastResult, CommandResult
 
@@ -13,6 +13,27 @@ if TYPE_CHECKING:
 
     from scout_mcp.config import Config
     from scout_mcp.services.pool import ConnectionPool
+
+
+# Allowlist of safe commands for remote execution
+ALLOWED_COMMANDS: Final[set[str]] = {
+    "grep",
+    "rg",  # ripgrep
+    "find",
+    "ls",
+    "tree",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "sort",
+    "uniq",
+    "diff",
+    "stat",
+    "file",
+    "du",
+    "df",
+}
 
 
 @dataclass
@@ -164,18 +185,78 @@ async def tree_dir(
     return stdout
 
 
+def validate_command(command: str) -> tuple[str, list[str]]:
+    """Parse and validate command against allowlist.
+
+    Args:
+        command: Shell command to validate
+
+    Returns:
+        Tuple of (command_name, arguments_list)
+
+    Raises:
+        ValueError: If command is empty, not allowed, or contains injection attempts
+    """
+    if not command or not command.strip():
+        raise ValueError("Empty command")
+
+    # Parse command with shlex (handles quotes correctly)
+    try:
+        parts = shlex.split(command)
+    except ValueError as e:
+        raise ValueError(f"Invalid command syntax: {e}") from e
+
+    if not parts:
+        raise ValueError("Empty command after parsing")
+
+    cmd = parts[0]
+    args = parts[1:] if len(parts) > 1 else []
+
+    # Check against allowlist
+    if cmd not in ALLOWED_COMMANDS:
+        allowed_list = ", ".join(sorted(ALLOWED_COMMANDS))
+        raise ValueError(
+            f"Command '{cmd}' not allowed. Allowed commands: {allowed_list}"
+        )
+
+    # Additional check: ensure no shell metacharacters in cmd itself
+    # (shlex.split should handle this, but defense in depth)
+    dangerous_chars = [";", "&", "|", "$", "`", "\n", "\r", "(", ")"]
+    for char in dangerous_chars:
+        if char in cmd:
+            raise ValueError(f"Command contains invalid character: {char}")
+
+    return cmd, args
+
+
 async def run_command(
     conn: "asyncssh.SSHClientConnection",
     working_dir: str,
     command: str,
     timeout: int,
 ) -> CommandResult:
-    """Execute arbitrary command in working directory.
+    """Execute validated command in working directory.
+
+    Args:
+        conn: SSH connection
+        working_dir: Working directory for command
+        command: Shell command (will be validated against allowlist)
+        timeout: Command timeout in seconds
 
     Returns:
-        CommandResult with stdout, stderr, and return code.
+        CommandResult with stdout, stderr, and return code
+
+    Raises:
+        ValueError: If command is not in allowlist
     """
-    full_command = f"cd {shlex.quote(working_dir)} && timeout {timeout} {command}"
+    # Validate and parse command
+    cmd, args = validate_command(command)
+
+    # Build safe command with proper quoting
+    # Note: cd is safe here because working_dir is validated separately
+    full_command = f"cd {shlex.quote(working_dir)} && timeout {timeout} {shlex.quote(cmd)}"
+    for arg in args:
+        full_command += f" {shlex.quote(arg)}"
 
     result = await conn.run(full_command, check=False)
 

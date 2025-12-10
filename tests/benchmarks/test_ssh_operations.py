@@ -113,7 +113,7 @@ async def test_run_command_latency() -> None:
     latencies = []
     for _ in range(100):
         start = time.perf_counter()
-        await run_command(conn, "/test/dir", "echo test", timeout=30)
+        await run_command(conn, "/test/dir", "grep pattern file", timeout=30)
         latencies.append(time.perf_counter() - start)
 
     avg = statistics.mean(latencies) * 1000
@@ -180,7 +180,7 @@ async def test_concurrent_operations() -> None:
             stat_path(conn, "/test/file"),
             cat_file(conn, "/test/file", max_size=1048576),
             ls_dir(conn, "/test/dir"),
-            run_command(conn, "/test", "echo test", timeout=30),
+            run_command(conn, "/test", "grep pattern file", timeout=30),
         )
         return time.perf_counter() - start
 
