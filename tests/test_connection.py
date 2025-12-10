@@ -36,7 +36,7 @@ class TestGetConnectionWithRetry:
         mock_conn = AsyncMock()
         mock_pool.get_connection = AsyncMock(return_value=mock_conn)
 
-        result = await get_connection_with_retry(mock_host)
+        result = await get_connection_with_retry(mock_host, mock_pool)
 
         assert result == mock_conn
         mock_pool.get_connection.assert_called_once_with(mock_host)
@@ -50,7 +50,7 @@ class TestGetConnectionWithRetry:
         )
         mock_pool.remove_connection = AsyncMock()
 
-        result = await get_connection_with_retry(mock_host)
+        result = await get_connection_with_retry(mock_host, mock_pool)
 
         assert result == mock_conn
         assert mock_pool.get_connection.call_count == 2
@@ -65,7 +65,7 @@ class TestGetConnectionWithRetry:
         mock_pool.remove_connection = AsyncMock()
 
         with pytest.raises(ConnectionError) as exc_info:
-            await get_connection_with_retry(mock_host)
+            await get_connection_with_retry(mock_host, mock_pool)
 
         assert "test-host" in str(exc_info.value)
         assert exc_info.value.host_name == "test-host"
@@ -85,7 +85,7 @@ class TestGetConnectionWithRetry:
         mock_pool.remove_connection = AsyncMock()
 
         with pytest.raises(ConnectionError) as exc_info:
-            await get_connection_with_retry(mock_host)
+            await get_connection_with_retry(mock_host, mock_pool)
 
         error = exc_info.value
         assert error.host_name == "test-host"
@@ -104,7 +104,7 @@ class TestGetConnectionWithRetry:
         )
         mock_pool.remove_connection = AsyncMock()
 
-        await get_connection_with_retry(mock_host)
+        await get_connection_with_retry(mock_host, mock_pool)
 
         # Verify cleanup was called with correct host name
         mock_pool.remove_connection.assert_called_once_with("test-host")

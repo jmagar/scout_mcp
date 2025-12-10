@@ -8,6 +8,7 @@ from scout_mcp.services import (
     ConnectionError,
     get_config,
     get_connection_with_retry,
+    get_pool,
 )
 from scout_mcp.services.executors import (
     beam_transfer,
@@ -40,8 +41,9 @@ async def _get_connection(
         Tuple of (connection, error_message). If successful, error is None.
         If failed, connection is None.
     """
+    pool = get_pool()
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, pool)
         return conn, None
     except ConnectionError as e:
         return None, str(e)
@@ -238,8 +240,9 @@ async def handle_beam_transfer(
         source = remote_path
         destination = beam_path
 
+    pool = get_pool()
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, pool)
         result = await beam_transfer(conn, source, destination, direction)
 
         if result.success:
@@ -314,10 +317,12 @@ async def handle_beam_transfer_remote_to_remote(
     source_host = None if source_is_local else source_parsed.host
     target_host = None if target_is_local else target_parsed.host
 
+    pool = get_pool()
+
     try:
         # Case 1: Optimized to local → remote (source is current host)
         if source_host is None and target_host is not None:
-            target_conn = await get_connection_with_retry(target_ssh_host)
+            target_conn = await get_connection_with_retry(target_ssh_host, pool)
             result = await beam_transfer(
                 target_conn,
                 source_parsed.path,  # Local path
@@ -327,7 +332,7 @@ async def handle_beam_transfer_remote_to_remote(
 
         # Case 2: Optimized to remote → local (target is current host)
         elif source_host is not None and target_host is None:
-            source_conn = await get_connection_with_retry(source_ssh_host)
+            source_conn = await get_connection_with_retry(source_ssh_host, pool)
             result = await beam_transfer(
                 source_conn,
                 source_parsed.path,  # Remote path
@@ -337,8 +342,8 @@ async def handle_beam_transfer_remote_to_remote(
 
         # Case 3: Remote → remote (neither is current host)
         elif source_host is not None and target_host is not None:
-            source_conn = await get_connection_with_retry(source_ssh_host)
-            target_conn = await get_connection_with_retry(target_ssh_host)
+            source_conn = await get_connection_with_retry(source_ssh_host, pool)
+            target_conn = await get_connection_with_retry(target_ssh_host, pool)
             result = await beam_transfer_remote_to_remote(
                 source_conn,
                 target_conn,

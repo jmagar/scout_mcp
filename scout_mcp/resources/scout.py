@@ -9,6 +9,7 @@ from scout_mcp.services import (
     ConnectionError,
     get_config,
     get_connection_with_retry,
+    get_pool,
 )
 from scout_mcp.services.executors import cat_file, ls_dir, stat_path
 from scout_mcp.services.validation import validate_host
@@ -102,14 +103,15 @@ async def scout_resource(host: str, path: str) -> str | dict[str, Any]:
     config = get_config()
 
     # Validate host exists
-    ssh_host = validate_host(host)
+    ssh_host = validate_host(host, config)
 
     # Normalize path - add leading slash if not present
     normalized_path = f"/{path}" if not path.startswith("/") else path
 
     # Get connection (with one retry on failure)
+    pool = get_pool()
     try:
-        conn = await get_connection_with_retry(ssh_host)
+        conn = await get_connection_with_retry(ssh_host, pool)
     except ConnectionError as e:
         raise ResourceError(str(e)) from e
 

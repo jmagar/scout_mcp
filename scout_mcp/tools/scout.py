@@ -201,8 +201,9 @@ async def scout(
 
     # If find pattern provided, search for files
     if find:
+        pool = get_pool()
         try:
-            conn = await get_connection_with_retry(ssh_host)
+            conn = await get_connection_with_retry(ssh_host, pool)
             results = await find_files(
                 conn,
                 parsed.path,
@@ -229,8 +230,9 @@ async def scout(
                 return f"Error: Unknown diff host '{diff_parsed.host}'"
 
             # Get connections to both hosts
-            conn = await get_connection_with_retry(ssh_host)
-            diff_conn = await get_connection_with_retry(diff_host)
+            pool = get_pool()
+            conn = await get_connection_with_retry(ssh_host, pool)
+            diff_conn = await get_connection_with_retry(diff_host, pool)
 
             diff_output, identical = await diff_files(
                 conn,
@@ -252,8 +254,9 @@ async def scout(
 
     # If diff_content provided, compare with inline content
     if diff_content:
+        pool = get_pool()
         try:
-            conn = await get_connection_with_retry(ssh_host)
+            conn = await get_connection_with_retry(ssh_host, pool)
             diff_output, identical = await diff_with_content(
                 conn, parsed.path, diff_content
             )
