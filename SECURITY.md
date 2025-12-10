@@ -111,11 +111,12 @@ environments where the MCP client is authenticated.
 ### What Scout MCP Protects Against
 
 - **Path traversal attacks:** Blocks `../` and other escape sequences
-- **Command injection:** Uses `shlex.quote()` for all paths and arguments
+- **Command injection:** MITIGATED - Uses allowlist of safe commands + shlex.quote()
 - **Host name injection:** Validates hostnames for suspicious characters
 - **Null byte attacks:** Rejects paths containing null bytes
-- **MITM attacks:** Verifies SSH host keys (if configured)
+- **SSH MITM attacks:** MITIGATED - Fail-closed host key verification (requires known_hosts)
 - **Memory exhaustion:** Enforces file size limits
+- **Docker/Compose injection:** Validates container and service names
 
 ### What Scout MCP Does NOT Protect Against
 

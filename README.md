@@ -186,6 +186,9 @@ mcp__scout__scout(
 - [ ] Use SSH keys, not passwords
 - [ ] Limit SSH user permissions on remote hosts
 - [ ] Review `~/.ssh/config` for only necessary hosts
+- [x] Command injection prevented (allowlist)
+- [x] SSH host verification enforced (fail-closed)
+- [x] Docker/Compose names validated
 
 ### Security Configuration
 

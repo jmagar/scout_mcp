@@ -308,12 +308,19 @@ When running with HTTP transport, a health check endpoint is available:
 
 ## Key Patterns
 
-### Global State Singletons
+### Dependency Injection
 ```python
-from scout_mcp.services import get_config, get_pool
-config = get_config()  # Lazy singleton
-pool = get_pool()      # Lazy singleton
+from scout_mcp.services import Dependencies
+
+# Create dependencies container
+deps = Dependencies.create()
+
+# Access components
+config = deps.config
+pool = deps.pool
 ```
+
+**Note:** The legacy singleton pattern (`get_config()`, `get_pool()`) is deprecated. Use `Dependencies.create()` instead.
 
 ### Error Handling
 - Tools return error strings (never raise)
@@ -337,7 +344,7 @@ All I/O is async. SSH operations use `asyncssh`, connection pool uses `asyncio.L
 from scout_mcp.models import ScoutTarget, SSHHost, PooledConnection, CommandResult
 
 # Services
-from scout_mcp.services import get_config, get_pool, ConnectionPool
+from scout_mcp.services import Dependencies, ConnectionPool
 from scout_mcp.services.executors import cat_file, ls_dir, run_command, stat_path, tree_dir
 
 # Utils
