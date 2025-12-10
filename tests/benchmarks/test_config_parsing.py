@@ -6,7 +6,37 @@ from pathlib import Path
 
 import pytest
 
-from scout_mcp.config import Config
+from scout_mcp.config import Config, SSHConfigParser, HostKeyVerifier, Settings
+
+
+def create_bench_config(
+    ssh_config_path: Path,
+    allowlist: list[str] | None = None,
+    blocklist: list[str] | None = None,
+) -> Config:
+    """Create a Config instance for benchmarking.
+
+    Args:
+        ssh_config_path: Path to SSH config file
+        allowlist: Allowed hosts
+        blocklist: Blocked hosts
+
+    Returns:
+        Config instance
+    """
+    settings = Settings()
+    parser = SSHConfigParser(
+        config_path=ssh_config_path,
+        allowlist=allowlist,
+        blocklist=blocklist,
+    )
+    known_hosts = Path("/tmp/scout_bench_known_hosts")
+    known_hosts.touch(exist_ok=True)
+    host_keys = HostKeyVerifier(
+        known_hosts_path=str(known_hosts),
+        strict_checking=False,
+    )
+    return Config(settings=settings, parser=parser, host_keys=host_keys)
 
 
 @pytest.fixture
@@ -47,7 +77,7 @@ def large_ssh_config(tmp_path: Path) -> Path:
 
 def test_ssh_config_parsing_cold(temp_ssh_config: Path) -> None:
     """Benchmark cold SSH config parsing."""
-    config = Config(ssh_config_path=temp_ssh_config)
+    config = create_bench_config(ssh_config_path=temp_ssh_config)
 
     start = time.perf_counter()
     hosts = config.get_hosts()
@@ -63,7 +93,7 @@ def test_ssh_config_parsing_cold(temp_ssh_config: Path) -> None:
 
 def test_ssh_config_parsing_cached(temp_ssh_config: Path) -> None:
     """Benchmark cached SSH config access."""
-    config = Config(ssh_config_path=temp_ssh_config)
+    config = create_bench_config(ssh_config_path=temp_ssh_config)
 
     # Prime the cache
     config.get_hosts()
@@ -88,7 +118,7 @@ def test_ssh_config_parsing_cached(temp_ssh_config: Path) -> None:
 
 def test_large_ssh_config_parsing(large_ssh_config: Path) -> None:
     """Benchmark large SSH config parsing (1000 hosts)."""
-    config = Config(ssh_config_path=large_ssh_config)
+    config = create_bench_config(ssh_config_path=large_ssh_config)
 
     start = time.perf_counter()
     hosts = config.get_hosts()
@@ -104,7 +134,7 @@ def test_large_ssh_config_parsing(large_ssh_config: Path) -> None:
 
 def test_host_lookup_performance(temp_ssh_config: Path) -> None:
     """Benchmark individual host lookup."""
-    config = Config(ssh_config_path=temp_ssh_config)
+    config = create_bench_config(ssh_config_path=temp_ssh_config)
 
     # Prime the cache
     config.get_hosts()
@@ -126,7 +156,7 @@ def test_host_lookup_performance(temp_ssh_config: Path) -> None:
 
 def test_allowlist_filtering_performance(temp_ssh_config: Path) -> None:
     """Benchmark allowlist filtering."""
-    config = Config(
+    config = create_bench_config(
         ssh_config_path=temp_ssh_config,
         allowlist=["host-1*", "host-2*"],
     )
@@ -142,7 +172,7 @@ def test_allowlist_filtering_performance(temp_ssh_config: Path) -> None:
 
 def test_blocklist_filtering_performance(temp_ssh_config: Path) -> None:
     """Benchmark blocklist filtering."""
-    config = Config(
+    config = create_bench_config(
         ssh_config_path=temp_ssh_config,
         blocklist=["host-9*"],
     )
@@ -168,7 +198,7 @@ def test_regex_parsing_overhead(temp_ssh_config: Path) -> None:
     regex_time = time.perf_counter() - start
 
     # Measure full parsing
-    config = Config(ssh_config_path=temp_ssh_config)
+    config = create_bench_config(ssh_config_path=temp_ssh_config)
     start = time.perf_counter()
     config.get_hosts()
     total_time = time.perf_counter() - start

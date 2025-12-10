@@ -43,7 +43,7 @@ def test_missing_known_hosts_raises_error(
     # Mock home directory to point to temp directory without known_hosts
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-    config = Config()
+    config = Config.from_env()
 
     # Accessing known_hosts_path should raise FileNotFoundError
     with pytest.raises(FileNotFoundError) as exc_info:
@@ -69,7 +69,7 @@ def test_known_hosts_none_disables_with_warning(
 
     # Start capturing logs BEFORE creating config
     with caplog.at_level(logging.CRITICAL):
-        config = Config()
+        config = Config.from_env()
         result = config.known_hosts_path
 
         # Should return None (verification disabled)
@@ -96,7 +96,7 @@ def test_custom_path_works_when_exists(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", str(temp_known_hosts))
 
-    config = Config()
+    config = Config.from_env()
     result = config.known_hosts_path
 
     # Should return the custom path
@@ -111,7 +111,7 @@ def test_custom_path_raises_when_missing(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", str(nonexistent_path))
 
-    config = Config()
+    config = Config.from_env()
 
     # Should raise FileNotFoundError
     with pytest.raises(FileNotFoundError) as exc_info:
@@ -139,7 +139,7 @@ def test_default_path_works_when_exists(
     # Mock home directory to point to temp directory
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-    config = Config()
+    config = Config.from_env()
     result = config.known_hosts_path
 
     # Should return the default path
@@ -160,7 +160,7 @@ def test_case_insensitive_none_value(
         monkeypatch.setenv("SCOUT_KNOWN_HOSTS", none_value)
 
         with caplog.at_level(logging.CRITICAL):
-            config = Config()
+            config = Config.from_env()
             result = config.known_hosts_path
 
             # All should return None and log warning
@@ -198,7 +198,7 @@ def test_tilde_expansion_in_custom_path(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", "~/custom/known_hosts")
 
-    config = Config()
+    config = Config.from_env()
     result = config.known_hosts_path
 
     # Should expand tilde and return the path
@@ -212,7 +212,7 @@ def test_whitespace_stripped_from_env_var(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", f"  {temp_known_hosts}  ")
 
-    config = Config()
+    config = Config.from_env()
     result = config.known_hosts_path
 
     # Should strip whitespace and work correctly
@@ -233,7 +233,7 @@ def test_empty_string_env_var_uses_default(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", "")
 
-    config = Config()
+    config = Config.from_env()
     result = config.known_hosts_path
 
     # Should use default path
@@ -247,7 +247,7 @@ def test_property_caching_behavior(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", str(temp_known_hosts))
 
-    config = Config()
+    config = Config.from_env()
 
     # First access
     result1 = config.known_hosts_path
@@ -268,12 +268,12 @@ def test_multiple_config_instances_independent(
     monkeypatch.setenv("SCOUT_SSH_CONFIG", str(temp_ssh_config))
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", str(temp_known_hosts))
 
-    config1 = Config()
+    config1 = Config.from_env()
     result1 = config1.known_hosts_path
 
     # Change environment for second instance
     monkeypatch.setenv("SCOUT_KNOWN_HOSTS", "none")
-    config2 = Config()
+    config2 = Config.from_env()
     result2 = config2.known_hosts_path
 
     # Both should reflect their environment at access time

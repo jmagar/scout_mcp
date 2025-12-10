@@ -28,7 +28,7 @@ def get_config() -> Config:
     )
     global _config
     if _config is None:
-        _config = Config()
+        _config = Config.from_env()
     return _config
 
 

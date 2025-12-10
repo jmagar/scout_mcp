@@ -24,7 +24,7 @@ class TestDependencies:
 
     def test_from_config_uses_provided_config(self):
         """Dependencies.from_config() should use provided config."""
-        custom_config = Config()
+        custom_config = Config.from_env()
         custom_config.max_pool_size = 50
 
         deps = Dependencies.from_config(custom_config)

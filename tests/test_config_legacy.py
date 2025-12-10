@@ -4,7 +4,39 @@ from pathlib import Path
 
 import pytest
 
-from scout_mcp.config import Config
+from scout_mcp.config import Config, SSHConfigParser, HostKeyVerifier, Settings
+
+
+def create_test_config(
+    ssh_config_path: Path | None = None,
+    allowlist: list[str] | None = None,
+    blocklist: list[str] | None = None,
+) -> Config:
+    """Create a test Config instance with custom parameters.
+
+    Args:
+        ssh_config_path: Path to SSH config file
+        allowlist: Allowed hosts
+        blocklist: Blocked hosts
+
+    Returns:
+        Config instance for testing
+    """
+    # Load settings from environment (will pick up any monkeypatch changes)
+    settings = Settings.from_env()
+    parser = SSHConfigParser(
+        config_path=ssh_config_path,
+        allowlist=allowlist,
+        blocklist=blocklist,
+    )
+    # Create a minimal known_hosts file for testing
+    known_hosts = Path("/tmp/scout_test_known_hosts")
+    known_hosts.touch(exist_ok=True)
+    host_keys = HostKeyVerifier(
+        known_hosts_path=str(known_hosts),
+        strict_checking=False,
+    )
+    return Config(settings=settings, parser=parser, host_keys=host_keys)
 
 
 def test_parse_ssh_config_extracts_hosts(tmp_path: Path) -> None:
@@ -22,7 +54,7 @@ Host tootie
     Port 29229
 """)
 
-    config = Config(ssh_config_path=ssh_config)
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     assert len(hosts) == 2
@@ -49,7 +81,7 @@ Host production
     User deploy
 """)
 
-    config = Config(ssh_config_path=ssh_config, allowlist=["dookie", "tootie"])
+    config = create_test_config(ssh_config_path=ssh_config, allowlist=["dookie", "tootie"])
     hosts = config.get_hosts()
 
     assert "dookie" in hosts
@@ -70,7 +102,7 @@ Host production
     User deploy
 """)
 
-    config = Config(ssh_config_path=ssh_config, blocklist=["production"])
+    config = create_test_config(ssh_config_path=ssh_config, blocklist=["production"])
     hosts = config.get_hosts()
 
     assert "dookie" in hosts
@@ -79,7 +111,7 @@ Host production
 
 def test_get_host_returns_none_for_unknown() -> None:
     """get_host returns None for unknown host."""
-    config = Config()
+    config = create_test_config()
     assert config.get_host("nonexistent") is None
 
 
@@ -88,7 +120,7 @@ def test_empty_ssh_config(tmp_path: Path) -> None:
     ssh_config = tmp_path / "config"
     ssh_config.write_text("")
 
-    config = Config(ssh_config_path=ssh_config)
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     assert len(hosts) == 0
@@ -104,7 +136,7 @@ def test_ssh_config_with_comments_only(tmp_path: Path) -> None:
 # Yet another comment
 """)
 
-    config = Config(ssh_config_path=ssh_config)
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     assert len(hosts) == 0
@@ -123,7 +155,7 @@ Host complete
     User admin
 """)
 
-    config = Config(ssh_config_path=ssh_config)
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     assert len(hosts) == 1
@@ -147,7 +179,7 @@ Host stringport
     Port abc123
 """)
 
-    config = Config(ssh_config_path=ssh_config)
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     assert len(hosts) == 2
@@ -163,7 +195,7 @@ def test_unreadable_config_file_treated_as_empty(tmp_path: Path) -> None:
     ssh_config.chmod(0o000)
 
     try:
-        config = Config(ssh_config_path=ssh_config)
+        config = create_test_config(ssh_config_path=ssh_config)
         hosts = config.get_hosts()
         # Should return empty dict for unreadable file
         assert len(hosts) == 0
@@ -180,7 +212,7 @@ def test_env_vars_override_defaults_with_scout_prefix(
     monkeypatch.setenv("SCOUT_COMMAND_TIMEOUT", "60")
     monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
 
-    config = Config(ssh_config_path=tmp_path / "nonexistent")
+    config = create_test_config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 5242880
     assert config.command_timeout == 60
@@ -193,7 +225,7 @@ def test_legacy_mcp_cat_env_vars_still_work(tmp_path: Path, monkeypatch) -> None
     monkeypatch.setenv("MCP_CAT_COMMAND_TIMEOUT", "45")
     monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "90")
 
-    config = Config(ssh_config_path=tmp_path / "nonexistent")
+    config = create_test_config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 2097152
     assert config.command_timeout == 45
@@ -210,7 +242,7 @@ def test_scout_prefix_takes_precedence_over_legacy(tmp_path: Path, monkeypatch) 
     monkeypatch.setenv("MCP_CAT_IDLE_TIMEOUT", "60")
     monkeypatch.setenv("SCOUT_IDLE_TIMEOUT", "120")
 
-    config = Config(ssh_config_path=tmp_path / "nonexistent")
+    config = create_test_config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 2000000  # SCOUT_ wins
     assert config.command_timeout == 60  # SCOUT_ wins
@@ -221,7 +253,7 @@ def test_invalid_env_var_uses_default(tmp_path: Path, monkeypatch) -> None:
     """Invalid environment variable values fall back to defaults."""
     monkeypatch.setenv("MCP_CAT_MAX_FILE_SIZE", "not_a_number")
 
-    config = Config(ssh_config_path=tmp_path / "nonexistent")
+    config = create_test_config(ssh_config_path=tmp_path / "nonexistent")
 
     assert config.max_file_size == 1_048_576  # default
 
@@ -231,17 +263,17 @@ class TestTransportConfig:
 
     def test_default_transport_is_http(self, tmp_path: Path) -> None:
         """Default transport should be http."""
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.transport == "http"
 
     def test_default_host_is_all_interfaces(self, tmp_path: Path) -> None:
         """Default host should be 0.0.0.0 (all interfaces)."""
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.http_host == "0.0.0.0"
 
     def test_default_port_is_8000(self, tmp_path: Path) -> None:
         """Default port should be 8000."""
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.http_port == 8000
 
     def test_transport_from_env(
@@ -249,7 +281,7 @@ class TestTransportConfig:
     ) -> None:
         """Transport can be set via SCOUT_TRANSPORT env var."""
         monkeypatch.setenv("SCOUT_TRANSPORT", "stdio")
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.transport == "stdio"
 
     def test_host_from_env(
@@ -257,7 +289,7 @@ class TestTransportConfig:
     ) -> None:
         """Host can be set via SCOUT_HTTP_HOST env var."""
         monkeypatch.setenv("SCOUT_HTTP_HOST", "127.0.0.1")
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.http_host == "127.0.0.1"
 
     def test_port_from_env(
@@ -265,7 +297,7 @@ class TestTransportConfig:
     ) -> None:
         """Port can be set via SCOUT_HTTP_PORT env var."""
         monkeypatch.setenv("SCOUT_HTTP_PORT", "9000")
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.http_port == 9000
 
     def test_invalid_port_uses_default(
@@ -273,7 +305,7 @@ class TestTransportConfig:
     ) -> None:
         """Invalid port value falls back to default."""
         monkeypatch.setenv("SCOUT_HTTP_PORT", "not-a-number")
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.http_port == 8000
 
     def test_invalid_transport_uses_default(
@@ -281,7 +313,7 @@ class TestTransportConfig:
     ) -> None:
         """Invalid transport value falls back to http."""
         monkeypatch.setenv("SCOUT_TRANSPORT", "invalid")
-        config = Config(ssh_config_path=tmp_path / "ssh_config")
+        config = create_test_config(ssh_config_path=tmp_path / "ssh_config")
         assert config.transport == "http"
 
 
@@ -301,10 +333,10 @@ Host remote
     Port 22
 """
 
-    config = Config()
-    config.ssh_config_path = tmp_path / "ssh_config"
-    config.ssh_config_path.write_text(config_content)
+    ssh_config = tmp_path / "ssh_config"
+    ssh_config.write_text(config_content)
 
+    config = create_test_config(ssh_config_path=ssh_config)
     hosts = config.get_hosts()
 
     # Server hostname should be marked as localhost

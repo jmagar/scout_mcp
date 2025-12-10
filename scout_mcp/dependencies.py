@@ -31,7 +31,7 @@ class Dependencies:
         Returns:
             Initialized Dependencies instance
         """
-        config = Config()
+        config = Config.from_env()
         pool = ConnectionPool(
             idle_timeout=config.idle_timeout,
             max_size=config.max_pool_size,
