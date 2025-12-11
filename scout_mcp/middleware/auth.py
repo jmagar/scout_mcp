@@ -12,6 +12,21 @@ from scout_mcp.middleware.base import MCPMiddleware
 logger = logging.getLogger(__name__)
 
 
+def _hash_key_for_logging(key: str) -> str:
+    """Hash an API key for safe logging.
+
+    Returns first 8 characters of SHA-256 hash.
+    This allows identifying failed attempts without exposing the key.
+
+    Args:
+        key: The API key to hash
+
+    Returns:
+        8-character hex string hash
+    """
+    return hashlib.sha256(key.encode()).hexdigest()[:8]
+
+
 class APIKeyMiddleware(MCPMiddleware):
     """MCP-layer API key authentication.
 
@@ -46,11 +61,9 @@ class APIKeyMiddleware(MCPMiddleware):
             raise PermissionError("Missing API key")
 
         if not self._validate_key(api_key):
-            # Hash key for logging (don't log raw key)
-            key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:8]
             logger.warning(
                 "Invalid API key attempt (hash: %s) from %s",
-                key_hash,
+                _hash_key_for_logging(api_key),
                 context.get("client_ip", "unknown"),
             )
             raise PermissionError("Invalid API key")
